@@ -30,7 +30,8 @@
       "Bash(convert -version)",
       "Bash(python3 -c \"import PIL; print\\(PIL.__version__\\)\")",
       "Bash(python3 -c \"from PIL import Image; print\\('ok'\\)\")",
-      "Bash(git -c user.email=local@snapshot -c 'user.name=pre-fix snapshot' commit -q -m 'Add favicon \\(fixes globe icon in browser tab / Google search results\\) *)"
+      "Bash(git -c user.email=local@snapshot -c 'user.name=pre-fix snapshot' commit -q -m 'Add favicon \\(fixes globe icon in browser tab / Google search results\\) *)",
+      "Bash(git -c user.email=local@snapshot -c 'user.name=pre-fix snapshot' commit -q -m 'Remove dead legacy js/main.js *)"
     ]
   }
 }
