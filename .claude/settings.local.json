@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell($bytes = [System.IO.File]::ReadAllBytes\\(\"c:\\\\Users\\\\yanis.huang\\\\Desktop\\\\JayFruit-main\\\\js\\\\member.js\"\\); $bytes[0..8] -join \",\")",
+      "PowerShell(Get-Content -Path \"c:\\\\Users\\\\yanis.huang\\\\Desktop\\\\JayFruit-main\\\\js\\\\member.js\" -Encoding Unicode | Select-String -Pattern \"usernameDisplay|onAuthStateChanged|displayName\" | ForEach-Object { \"$\\($_.LineNumber\\): $\\($_.Line\\)\" })",
+      "PowerShell(Get-Content -Path \"c:\\\\Users\\\\yanis.huang\\\\Desktop\\\\JayFruit-main\\\\js\\\\member.js\" -Encoding Unicode | Select-Object -Skip 689 -First 90 | ForEach-Object { $i++; \"$\\($i+689\\): $_\" })",
+      "PowerShell(Get-Content -Path \"c:\\\\Users\\\\yanis.huang\\\\Desktop\\\\JayFruit-main\\\\js\\\\member.js\" -Encoding Unicode | Select-Object -Skip 1429 -First 160 | ForEach-Object { $i++; \"$\\($i+1429\\): $_\" })",
+      "PowerShell(Get-Content -Path \"c:\\\\Users\\\\yanis.huang\\\\Desktop\\\\JayFruit-main\\\\js\\\\member.js\" -Encoding Unicode | Select-Object -Skip 949 -First 130 | ForEach-Object { $i++; \"$\\($i+949\\): $_\" })",
+      "PowerShell(Get-Content -Path \"c:\\\\Users\\\\yanis.huang\\\\Desktop\\\\JayFruit-main\\\\js\\\\member.js\" -Encoding Unicode | Select-String -Pattern \"signInWithEmailAndPassword|createUserWithEmailAndPassword|updateLoginUI|function handleLogin\" | ForEach-Object { \"$\\($_.LineNumber\\): $\\($_.Line\\)\" })",
+      "PowerShell(Get-Content -Path \"c:\\\\Users\\\\yanis.huang\\\\Desktop\\\\JayFruit-main\\\\js\\\\member.js\" -Encoding Unicode | Select-Object -Skip 1258 -First 45 | ForEach-Object { $i++; \"$\\($i+1258\\): $_\" })",
+      "PowerShell(Get-Content -Path \"c:\\\\Users\\\\yanis.huang\\\\Desktop\\\\JayFruit-main\\\\js\\\\member.js\" -Encoding Unicode | Select-Object -Skip 1129 -First 100 | ForEach-Object { $i++; \"$\\($i+1129\\): $_\" })",
+      "PowerShell(Get-Content -Path \"c:\\\\Users\\\\yanis.huang\\\\Desktop\\\\JayFruit-main\\\\js\\\\main.js\" -Encoding Unicode | Select-String -Pattern \"usernameDisplay|onAuthStateChanged|cart-count|updateCartCount|cartCount\" | ForEach-Object { \"$\\($_.LineNumber\\): $\\($_.Line\\)\" })",
+      "PowerShell(Get-Content -Path \"c:\\\\Users\\\\yanis.huang\\\\Desktop\\\\JayFruit-main\\\\js\\\\common.js\" -Encoding Unicode | Select-String -Pattern \"usernameDisplay|onAuthStateChanged|cart-count|updateCartCount|cartCount\" | ForEach-Object { \"$\\($_.LineNumber\\): $\\($_.Line\\)\" })",
+      "PowerShell(Get-Content -Path \"c:\\\\Users\\\\yanis.huang\\\\Desktop\\\\JayFruit-main\\\\js\\\\admin-common.js\" -Encoding Unicode | Select-String -Pattern \"usernameDisplay|onAuthStateChanged|cart-count|updateCartCount|cartCount|firebaseConfig\" | ForEach-Object { \"$\\($_.LineNumber\\): $\\($_.Line\\)\" })",
+      "PowerShell(Get-Content -Path \"c:\\\\Users\\\\yanis.huang\\\\Desktop\\\\JayFruit-main\\\\js\\\\member.js\" -Encoding Unicode | Select-String -Pattern \"firebaseConfig|apiKey\" | ForEach-Object { \"$\\($_.LineNumber\\): $\\($_.Line\\)\" })",
+      "PowerShell(Get-Content -Path \"c:\\\\Users\\\\yanis.huang\\\\Desktop\\\\JayFruit-main\\\\TEST.html\" -Encoding Unicode | Select-String -Pattern \"key=|apikey|token|password|secret|http://|https://\" -CaseSensitive:$false | ForEach-Object { \"$\\($_.LineNumber\\): $\\($_.Line.Trim\\(\\)\\)\" } | Select-Object -First 40)",
+      "PowerShell(Get-Content -Path \"c:\\\\Users\\\\yanis.huang\\\\Desktop\\\\JayFruit-main\\\\js\\\\order-panel.js\" -Encoding Unicode | Select-Object -Skip 479 -First 70 | ForEach-Object { $i++; \"$\\($i+479\\): $_\" })",
+      "PowerShell(Get-Content -Path \"c:\\\\Users\\\\yanis.huang\\\\Desktop\\\\JayFruit-main\\\\js\\\\order-panel.js\" -Encoding Unicode | Select-Object -Skip 650 -First 95 | ForEach-Object { $i++; \"$\\($i+650\\): $_\" })",
+      "PowerShell(Get-Content -Path \"c:\\\\Users\\\\yanis.huang\\\\Desktop\\\\JayFruit-main\\\\js\\\\common.js\" -Encoding Unicode | Select-Object -Skip 360 -First 25 | ForEach-Object { $i++; \"$\\($i+360\\): $_\" })",
+      "PowerShell(Get-Content -Path \"c:\\\\Users\\\\yanis.huang\\\\Desktop\\\\JayFruit-main\\\\index.html\" -Encoding Unicode | Select-String -Pattern \"<script\"  | ForEach-Object { \"$\\($_.LineNumber\\): $\\($_.Line.Trim\\(\\)\\)\" })",
+      "PowerShell(Get-Content -Path \"c:\\\\Users\\\\yanis.huang\\\\Desktop\\\\JayFruit-main\\\\index.html\" -Encoding Unicode | Select-String -Pattern \"charset\" | ForEach-Object { \"$\\($_.LineNumber\\): $\\($_.Line.Trim\\(\\)\\)\" })",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git -c user.email=\"local@snapshot\" -c user.name=\"pre-fix snapshot\" commit -m \"Initial snapshot before bug-fix pass\" -q)"
+    ]
+  }
+}
