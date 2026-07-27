@@ -146,7 +146,7 @@ function checkAdminAccess(onSuccess = null, onFailed = null) {
             } else {
                 // 預設行為：重定向到首頁
                 setTimeout(() => {
-                    window.location.href = 'index.html';
+                    window.location.href = '../index.html';
                 }, 2000);
             }
         } else {
@@ -289,7 +289,7 @@ function handleLogout() {
             .then(() => {
                 console.log('登出成功，重定向到首頁');
                 currentUser = null;
-                window.location.href = 'index.html';
+                window.location.href = '../index.html';
             })
             .catch((error) => {
                 console.error('登出錯誤:', error);
