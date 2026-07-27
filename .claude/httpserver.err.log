@@ -1,9 +1,0 @@
-::1 - - [27/Jul/2026 20:43:46] "GET /admin_panel.html HTTP/1.1" 200 -
-::1 - - [27/Jul/2026 20:43:46] "GET /contact.html HTTP/1.1" 200 -
-::1 - - [27/Jul/2026 20:43:46] "GET /dash_board_pane.html HTTP/1.1" 200 -
-::1 - - [27/Jul/2026 20:43:46] "GET /order_panel.html HTTP/1.1" 200 -
-::1 - - [27/Jul/2026 20:43:46] "GET /user_management.html HTTP/1.1" 200 -
-::1 - - [27/Jul/2026 20:43:46] "GET /product_management.html HTTP/1.1" 200 -
-::1 - - [27/Jul/2026 20:43:47] "GET /delivery_settings.html HTTP/1.1" 200 -
-::1 - - [27/Jul/2026 20:44:04] "GET /admin_panel.html HTTP/1.1" 200 -
-::1 - - [27/Jul/2026 20:44:04] "GET /contact.html HTTP/1.1" 200 -
