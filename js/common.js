@@ -3,6 +3,19 @@
  * 包含所有頁面的共同功能
  */
 
+// 將字串跳脫為安全的 HTML 文字，避免客戶輸入的資料（姓名、備註等）
+// 被當成 HTML/JS 執行（Stored XSS）
+function escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+window.escapeHtml = escapeHtml;
+
 // 全域變數
 window.CommonModule = {
     // Firebase 服務引用

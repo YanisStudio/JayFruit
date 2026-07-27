@@ -1311,6 +1311,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    // 清除舊版本 bug 曾寫入的字面字串 "undefined"/"null"（localStorage 只能存字串，
+    // 過去若把 undefined 存進去會變成這兩個字串本身，且為 truthy，會被誤判為有效用戶名）
+    const storedUserName = localStorage.getItem('userName');
+    if (storedUserName === 'undefined' || storedUserName === 'null') {
+        localStorage.removeItem('userName');
+    }
+
     // 立即初始化 UI 狀態
     initializeUI();
 
@@ -1478,14 +1485,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 getDoc(doc(db, 'users', user.uid))
                     .then((docSnap) => {
                         if (docSnap.exists()) {
-                            console.log("獲取用戶資料:", docSnap.data().name);
-                            localStorage.setItem('userName', docSnap.data().name);
-                            
+                            // Firestore 的 name 欄位可能為空字串或不存在（例如手機登入的新用戶尚未填寫姓名），
+                            // 沒有 fallback 的話畫面會顯示字面上的 "undefined"
+                            const name = docSnap.data().name || user.email?.split('@')[0] || user.phoneNumber || '用戶';
+                            console.log("獲取用戶資料:", name);
+                            localStorage.setItem('userName', name);
+
                             if (usernameDisplay) {
-                                usernameDisplay.textContent = docSnap.data().name;
+                                usernameDisplay.textContent = name;
                             }
                             if (usernameDisplayMobile) {
-                                usernameDisplayMobile.textContent = docSnap.data().name;
+                                usernameDisplayMobile.textContent = name;
                             }
                         } else {
                             // 如果找不到用戶資料，使用預設顯示

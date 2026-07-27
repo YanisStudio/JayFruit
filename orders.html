@@ -1153,7 +1153,7 @@ async function loadUserOrders(user) {
                         <span class="order-status ${statusClass}">${statusText}</span>
                     </div>
                     <div class="order-info">
-                        <p>收件人: ${order.customer?.name || '未知'}</p>
+                        <p>收件人: ${window.escapeHtml(order.customer?.name) || '未知'}</p>
                         <p>商品數量: ${order.items?.length || 0} 件</p>
                         <p class="order-total">總金額: ${order.total || 0}</p>
                         <p class="order-date">${orderDate}</p>
@@ -1363,18 +1363,18 @@ async function showOrderDetail(orderId) {
             
             <div class="order-detail-section">
                 <h3>收件人資訊</h3>
-                <p><strong>姓名：</strong> ${order.customer?.name || '未知'}</p>
-                <p><strong>電話：</strong> ${order.customer?.phone || '未知'}</p>
-                <p><strong>電子郵件：</strong> ${order.customer?.email || '未知'}</p>
-                <p><strong>地址：</strong> ${order.customer?.address || '未知'}</p>
+                <p><strong>姓名：</strong> ${window.escapeHtml(order.customer?.name) || '未知'}</p>
+                <p><strong>電話：</strong> ${window.escapeHtml(order.customer?.phone) || '未知'}</p>
+                <p><strong>電子郵件：</strong> ${window.escapeHtml(order.customer?.email) || '未知'}</p>
+                <p><strong>地址：</strong> ${window.escapeHtml(order.customer?.address) || '未知'}</p>
             </div>
-            
+
             <div class="order-detail-section">
                 <h3>訂單資訊</h3>
                 <p><strong>訂單日期：</strong> ${orderDate}</p>
                 <p><strong>配送方式：</strong> ${shippingMethodText}</p>
                 <p><strong>付款方式：</strong> ${paymentMethodText}</p>
-                <p><strong>備註：</strong> ${order.notes ? order.notes.replace(/\n/g, '<br>') : '無'}</p>
+                <p><strong>備註：</strong> ${order.notes ? window.escapeHtml(order.notes).replace(/\n/g, '<br>') : '無'}</p>
             </div>
             
             <div class="order-detail-section">

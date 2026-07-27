@@ -401,7 +401,7 @@
                     ordersHTML += `
                         <tr>
                             <td>${order.orderNumber || '無訂單編號'}</td>
-                            <td>${order.customer?.name || '未知'}</td>
+                            <td>${window.AdminCommon.escapeHtml(order.customer?.name) || '未知'}</td>
                             <td>${orderDate}</td>
                             <td>${order.total || 0}</td>
                             <td><span class="status-badge ${statusClass}">${statusText}</span></td>

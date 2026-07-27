@@ -495,6 +495,22 @@ function formatDate(date, format = 'full') {
 }
 
 /**
+ * 將字串跳脫為安全的 HTML 文字，避免客戶輸入的資料（姓名、備註等）
+ * 被當成 HTML/JS 執行（Stored XSS）
+ * @param {*} value - 任意值，會先轉成字串再跳脫
+ * @returns {string} - 跳脫後的安全字串
+ */
+function escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+/**
  * 防抖函數
  * @param {Function} func - 要防抖的函數
  * @param {number} wait - 等待時間（毫秒）
@@ -604,6 +620,7 @@ if (typeof window !== 'undefined') {
         showToast,
         showConfirmDialog,
         formatDate,
+        escapeHtml,
         debounce,
         handleError,
         isAdmin,

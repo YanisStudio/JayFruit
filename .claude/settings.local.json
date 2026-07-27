@@ -21,7 +21,12 @@
       "PowerShell(Get-Content -Path \"c:\\\\Users\\\\yanis.huang\\\\Desktop\\\\JayFruit-main\\\\index.html\" -Encoding Unicode | Select-String -Pattern \"charset\" | ForEach-Object { \"$\\($_.LineNumber\\): $\\($_.Line.Trim\\(\\)\\)\" })",
       "Bash(git init *)",
       "Bash(git add *)",
-      "Bash(git -c user.email=\"local@snapshot\" -c user.name=\"pre-fix snapshot\" commit -m \"Initial snapshot before bug-fix pass\" -q)"
+      "Bash(git -c user.email=\"local@snapshot\" -c user.name=\"pre-fix snapshot\" commit -m \"Initial snapshot before bug-fix pass\" -q)",
+      "Bash(xxd -l16 index.html)",
+      "PowerShell(Get-Command node -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-Command npx -ErrorAction SilentlyContinue)",
+      "Bash(git -c user.email=\"local@snapshot\" -c user.name=\"pre-fix snapshot\" commit -m \"Normalize all HTML/JS/CSS files from UTF-16LE to UTF-8 \\(no BOM\\)\" -q)",
+      "Bash(git -c user.email=local@snapshot -c 'user.name=pre-fix snapshot' commit -q -m 'Fix login undefined-name flash and stored XSS in customer/order data rendering *)"
     ]
   }
 }

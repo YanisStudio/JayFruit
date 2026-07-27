@@ -1,3 +1,6 @@
+// escapeHtml 由 admin-common.js 的 window.AdminCommon.escapeHtml 提供（避免重複實作）
+const escapeHtml = (value) => window.AdminCommon.escapeHtml(value);
+
 document.addEventListener('DOMContentLoaded', function() {
     // 等待 AdminCommon 載入完成
     const waitForAdminCommon = function() {
@@ -533,7 +536,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                         <span class="status-badge ${statusClass}">${statusText}</span>
                                     </div>
                                     <div class="order-item-body">
-                                        <p><strong>客戶:</strong> ${order.customer?.name || '未知'}</p>
+                                        <p><strong>客戶:</strong> ${escapeHtml(order.customer?.name) || '未知'}</p>
                                         <p><strong>金額:</strong> ${order.total || 0}</p>
                                         <p><strong>日期:</strong> ${orderDate}</p>
                                         ${order.isGift ? '<p class="gift-order-text"><i class="fas fa-gift"></i> 送禮訂單</p>' : ''}
@@ -608,10 +611,10 @@ document.addEventListener('DOMContentLoaded', function() {
                                 itemsHTML += `
                                     <div class="order-item-detail">
                                         <div class="item-image">
-                                            <img src="${imageUrl}" alt="${item.name}" onerror="this.src='images/placeholder.jpg'">
+                                            <img src="${imageUrl}" alt="${escapeHtml(item.name)}" onerror="this.src='images/placeholder.jpg'">
                                         </div>
                                         <div class="item-info">
-                                            <h4>${item.name}</h4>
+                                            <h4>${escapeHtml(item.name)}</h4>
                                             <p>${item.price} x ${item.quantity} = ${item.price * item.quantity}</p>
                                         </div>
                                     </div>
@@ -627,7 +630,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             notesHTML = `
                                 <div class="order-notes">
                                     <h4>客戶備註:</h4>
-                                    <p>${order.notes ? order.notes.replace(/\n/g, '<br>') : '無'}</p>
+                                    <p>${order.notes ? escapeHtml(order.notes).replace(/\n/g, '<br>') : '無'}</p>
                                 </div>
                             `;
                         }
@@ -642,9 +645,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                 giftInfoHTML += `
                                     <div class="sender-info-section">
                                         <h4><i class="fas fa-user-edit"></i> 寄件人資訊</h4>
-                                        <p><strong>姓名:</strong> ${order.sender.name}</p>
-                                        <p><strong>電話:</strong> ${order.sender.phone || '未提供'}</p>
-                                        <p><strong>地址:</strong> ${order.sender.address || '未提供'}</p>
+                                        <p><strong>姓名:</strong> ${escapeHtml(order.sender.name)}</p>
+                                        <p><strong>電話:</strong> ${escapeHtml(order.sender.phone) || '未提供'}</p>
+                                        <p><strong>地址:</strong> ${escapeHtml(order.sender.address) || '未提供'}</p>
                                     </div>
                                 `;
                             } else {
@@ -703,10 +706,10 @@ document.addEventListener('DOMContentLoaded', function() {
                                     
                                     <div class="order-section">
                                         <h4>客戶信息</h4>
-                                        <p><strong>姓名:</strong> ${order.customer?.name || '未知'}</p>
-                                        <p><strong>電話:</strong> ${order.customer?.phone || '未知'}</p>
-                                        <p><strong>電子郵件:</strong> ${order.customer?.email || '未知'}</p>
-                                        <p><strong>地址:</strong> ${order.customer?.address || '未知'}</p>
+                                        <p><strong>姓名:</strong> ${escapeHtml(order.customer?.name) || '未知'}</p>
+                                        <p><strong>電話:</strong> ${escapeHtml(order.customer?.phone) || '未知'}</p>
+                                        <p><strong>電子郵件:</strong> ${escapeHtml(order.customer?.email) || '未知'}</p>
+                                        <p><strong>地址:</strong> ${escapeHtml(order.customer?.address) || '未知'}</p>
                                     </div>
                                     
                                     <div class="order-section">
