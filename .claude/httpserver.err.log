@@ -1,0 +1,26 @@
+::1 - - [27/Jul/2026 20:31:34] "GET /index.html HTTP/1.1" 200 -
+::1 - - [27/Jul/2026 20:31:42] "GET /index.html HTTP/1.1" 200 -
+::1 - - [27/Jul/2026 20:31:42] "GET /products.html HTTP/1.1" 200 -
+::1 - - [27/Jul/2026 20:31:43] "GET /cart.html HTTP/1.1" 200 -
+::1 - - [27/Jul/2026 20:31:43] "GET /order_panel.html HTTP/1.1" 200 -
+::1 - - [27/Jul/2026 20:31:43] "GET /orders.html HTTP/1.1" 200 -
+::1 - - [27/Jul/2026 20:31:43] "GET /profile.html HTTP/1.1" 200 -
+::1 - - [27/Jul/2026 20:31:43] "GET /js/firebase-config.js HTTP/1.1" 200 -
+::1 - - [27/Jul/2026 20:31:43] "GET /js/common.js HTTP/1.1" 200 -
+::1 - - [27/Jul/2026 20:31:43] "GET /js/member.js HTTP/1.1" 200 -
+::1 - - [27/Jul/2026 20:31:43] "GET /js/admin-common.js HTTP/1.1" 200 -
+::1 - - [27/Jul/2026 20:31:43] "GET /js/order-panel.js HTTP/1.1" 200 -
+::1 - - [27/Jul/2026 20:31:43] code 404, message File not found
+::1 - - [27/Jul/2026 20:31:43] "GET /js/main.js HTTP/1.1" 404 -
+::1 - - [27/Jul/2026 20:31:43] code 404, message File not found
+::1 - - [27/Jul/2026 20:31:43] "GET /js/cart.js HTTP/1.1" 404 -
+::1 - - [27/Jul/2026 20:31:43] code 404, message File not found
+::1 - - [27/Jul/2026 20:31:43] "GET /js/admin.js HTTP/1.1" 404 -
+::1 - - [27/Jul/2026 20:31:43] code 404, message File not found
+::1 - - [27/Jul/2026 20:31:43] "GET /css/member.css HTTP/1.1" 404 -
+::1 - - [27/Jul/2026 20:31:43] code 404, message File not found
+::1 - - [27/Jul/2026 20:31:43] "GET /css/profile.css HTTP/1.1" 404 -
+::1 - - [27/Jul/2026 20:31:43] "GET /images/favicon-32.png HTTP/1.1" 200 -
+::1 - - [27/Jul/2026 20:31:43] "GET /images/favicon-16.png HTTP/1.1" 200 -
+::1 - - [27/Jul/2026 20:31:43] "GET /images/apple-touch-icon.png HTTP/1.1" 200 -
+::1 - - [27/Jul/2026 20:31:52] "GET /index.html HTTP/1.1" 200 -

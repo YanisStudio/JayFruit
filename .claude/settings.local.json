@@ -39,7 +39,20 @@
       "Bash(git -c user.email=local@snapshot -c 'user.name=pre-fix snapshot' commit -q -m 'Consolidate admin email allowlist and remove unused TEST.html *)",
       "Bash(sed -i '/<link rel=\"stylesheet\" href=\"css\\\\/profile\\\\.css\">/d' orders.html profile.html)",
       "Bash(sed -i '/<link rel=\"stylesheet\" href=\"css\\\\/member\\\\.css\">/d' products.html)",
-      "Bash(git -c user.email=local@snapshot -c 'user.name=pre-fix snapshot' commit -q -m 'Remove broken stylesheet references \\(css/member.css, css/profile.css don'\\\\''t exist\\) *)"
+      "Bash(git -c user.email=local@snapshot -c 'user.name=pre-fix snapshot' commit -q -m 'Remove broken stylesheet references \\(css/member.css, css/profile.css don'\\\\''t exist\\) *)",
+      "Bash(cat /tmp/httpserver.log 2>&1; echo \"---\"; ps aux | grep http.server | grep -v grep)",
+      "Read(//tmp/**)",
+      "Bash(python3 -m http.server 8917)",
+      "Bash(curl -s -o /dev/null -w \"index.html: %{http_code}\\\\n\" http://localhost:8917/index.html)",
+      "Bash(curl -s -o /dev/null -w \"products.html: %{http_code}\\\\n\" http://localhost:8917/products.html)",
+      "Bash(curl -s -o /dev/null -w \"cart.html: %{http_code}\\\\n\" http://localhost:8917/cart.html)",
+      "Bash(curl -s -o /dev/null -w \"order_panel.html: %{http_code}\\\\n\" http://localhost:8917/order_panel.html)",
+      "Bash(curl -s -o /dev/null -w \"js/firebase-config.js: %{http_code}\\\\n\" http://localhost:8917/js/firebase-config.js)",
+      "PowerShell(Get-Command python -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-Command python3 -ErrorAction SilentlyContinue)",
+      "PowerShell(& python --version 2>&1)",
+      "PowerShell(& python3 --version 2>&1)",
+      "Bash(git -c user.email=local@snapshot -c 'user.name=pre-fix snapshot' commit -q -m 'Hide unbuilt '\\\\''訊息管理'\\\\'' admin nav card \\(linked to non-existent admin_panel.html\\) *)"
     ]
   }
 }
