@@ -36,7 +36,10 @@
       "Bash(git -c user.email=local@snapshot -c 'user.name=pre-fix snapshot' commit -q -m 'Centralize Firebase project config into js/firebase-config.js *)",
       "Bash(git -c user.email=local@snapshot -c 'user.name=pre-fix snapshot' commit -q -m 'Remove redundant js/cart.js *)",
       "Bash(git rm *)",
-      "Bash(git -c user.email=local@snapshot -c 'user.name=pre-fix snapshot' commit -q -m 'Consolidate admin email allowlist and remove unused TEST.html *)"
+      "Bash(git -c user.email=local@snapshot -c 'user.name=pre-fix snapshot' commit -q -m 'Consolidate admin email allowlist and remove unused TEST.html *)",
+      "Bash(sed -i '/<link rel=\"stylesheet\" href=\"css\\\\/profile\\\\.css\">/d' orders.html profile.html)",
+      "Bash(sed -i '/<link rel=\"stylesheet\" href=\"css\\\\/member\\\\.css\">/d' products.html)",
+      "Bash(git -c user.email=local@snapshot -c 'user.name=pre-fix snapshot' commit -q -m 'Remove broken stylesheet references \\(css/member.css, css/profile.css don'\\\\''t exist\\) *)"
     ]
   }
 }
