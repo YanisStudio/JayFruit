@@ -20,6 +20,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
     <!-- 引入 Firebase SDK -->
+    <script src="js/firebase-config.js"></script>
     <script type="module">
         // 導入Firebase所需模組
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
@@ -42,15 +43,7 @@
         } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
         
         // Firebase配置 - 更新為水果店配置
-        const firebaseConfig = {
-            apiKey: "AIzaSyADQzSglrzQm1G-fO4kc9dcmJsA9f6S2AQ",
-            authDomain: "jayfruit-9dfab.firebaseapp.com",
-            projectId: "jayfruit-9dfab",
-            storageBucket: "jayfruit-9dfab.firebasestorage.app",
-            messagingSenderId: "766936951714",
-            appId: "1:766936951714:web:4dc4a8787e810a0171a0fb",
-            measurementId: "G-2NWQ7E9Y8H"
-        };
+        const firebaseConfig = window.FIREBASE_CONFIG;
         
         // 初始化Firebase
         const app = initializeApp(firebaseConfig);
