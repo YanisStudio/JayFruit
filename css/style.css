@@ -1522,7 +1522,7 @@ nav ul li a:hover::after {
 /* CTA 區域 */
 .cta-section {
     padding: 3.75em 0;
-    background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('../images/cta-bg.jpg');
+    background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('../images/farm.jpg');
     background-size: cover;
     background-position: center;
     text-align: center;

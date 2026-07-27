@@ -1,5 +1,4 @@
-// escapeHtml 由 admin-common.js 的 window.AdminCommon.escapeHtml 提供（避免重複實作）
-const escapeHtml = (value) => window.AdminCommon.escapeHtml(value);
+// escapeHtml 由 admin-common.js 提供的全域函式（该檔案先載入，避免重複實作）
 
 document.addEventListener('DOMContentLoaded', function() {
     // 等待 AdminCommon 載入完成
