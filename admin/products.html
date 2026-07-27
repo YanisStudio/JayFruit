@@ -1018,7 +1018,7 @@
                                     <tr>
                                         <td>${productId.substring(0, 6)}...</td>
                                         <td>
-                                            <img src="${product.imageUrl || 'images/placeholder.jpg'}" alt="${product.name}" class="product-thumbnail">
+                                            <img src="${product.imageUrl || 'images/placeholder.jpg'}" alt="${product.name}" class="product-thumbnail" onerror="this.onerror=null; this.src='images/placeholder.jpg';">
                                         </td>
                                         <td>
                                             ${product.name}

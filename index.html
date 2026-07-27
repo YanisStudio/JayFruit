@@ -455,7 +455,7 @@ function renderProducts(products) {
                 data-category="${product.category}">
                 <div class="product-image">
                     ${tagHTML}
-                    <img src="${product.imageUrl || 'images/placeholder.jpg'}" alt="${product.name}">
+                    <img src="${product.imageUrl || 'images/placeholder.jpg'}" alt="${product.name}" onerror="this.onerror=null; this.src='images/placeholder.jpg';">
                 </div>
                 <div class="product-info">
                     <div class="product-content">
