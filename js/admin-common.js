@@ -14,14 +14,6 @@ const firebaseConfig = {
             measurementId: "G-2NWQ7E9Y8H"
         };
 
-// 管理員郵箱列表
-const ADMIN_EMAILS = [
-    'bababa.b810@gmail.com',
-    'vincentsayhello@gmail.com',
-    'yanishuang2000@gmail.com',
-    'jay26904@gmail.com'
-];
-
 // 全局變量
 let firebaseApp = null;
 let currentUser = null;
@@ -32,7 +24,7 @@ let currentUser = null;
  * @returns {boolean} - 是否為管理員
  */
 function isAdmin(email) {
-    return ADMIN_EMAILS.includes(email?.toLowerCase());
+    return window.ADMIN_EMAILS.includes(email?.toLowerCase());
 }
 
 /**

@@ -20,17 +20,9 @@ window.escapeHtml = escapeHtml;
 window.CommonModule = {
     // Firebase 服務引用
     firebase: null,
-    
+
     // 當前用戶
-    currentUser: null,
-    
-    // 管理員電子郵件列表
-    adminEmails: [
-        'bababa.b810@gmail.com',
-        'vincentsayhello@gmail.com',
-        'yanishuang2000@gmail.com',
-        'jay26904@gmail.com'
-    ]
+    currentUser: null
 };
 
 /**
@@ -404,7 +396,7 @@ function initAdminAccess() {
  * 檢查是否為管理員
  */
 function isAdmin(email) {
-    return CommonModule.adminEmails.includes(email);
+    return window.ADMIN_EMAILS.includes(email?.toLowerCase());
 }
 
 /**

@@ -34,7 +34,9 @@
       "Bash(git -c user.email=local@snapshot -c 'user.name=pre-fix snapshot' commit -q -m 'Remove dead legacy js/main.js *)",
       "Bash(grep -v ':1$')",
       "Bash(git -c user.email=local@snapshot -c 'user.name=pre-fix snapshot' commit -q -m 'Centralize Firebase project config into js/firebase-config.js *)",
-      "Bash(git -c user.email=local@snapshot -c 'user.name=pre-fix snapshot' commit -q -m 'Remove redundant js/cart.js *)"
+      "Bash(git -c user.email=local@snapshot -c 'user.name=pre-fix snapshot' commit -q -m 'Remove redundant js/cart.js *)",
+      "Bash(git rm *)",
+      "Bash(git -c user.email=local@snapshot -c 'user.name=pre-fix snapshot' commit -q -m 'Consolidate admin email allowlist and remove unused TEST.html *)"
     ]
   }
 }

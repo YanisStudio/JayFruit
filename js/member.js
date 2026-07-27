@@ -670,13 +670,7 @@ window.showMemberWarningModal = showMemberWarningModal;
 
 // 管理員檢查函數
 function isAdmin(email) {
-    const adminEmails = [
-        'bababa.b810@gmail.com',
-        'vincentsayhello@gmail.com',
-        'yanishuang2000@gmail.com',
-        'jay26904@gmail.com'
-    ];
-    return adminEmails.includes(email);
+    return window.ADMIN_EMAILS.includes(email?.toLowerCase());
 }
 
 // 用戶登入狀態操作函數
