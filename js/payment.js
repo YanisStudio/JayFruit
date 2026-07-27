@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // 初始化共用功能
     initCommonFeatures();
     
-    // 全域變數 - 與 delivery_settings.html 保持一致
+    // 全域變數 - 與 admin/shipping.html 保持一致
     let shippingSettings = { 
         calculationMode: 'fixed', 
         freeShipping: { enabled: false, threshold: 0 } 
@@ -494,7 +494,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
     
-    // 載入運費設定 - 與 delivery_settings.html 保持一致
+    // 載入運費設定 - 與 admin/shipping.html 保持一致
     async function loadShippingSettings() {
         try {
             if (!window.firebaseServices) {
@@ -558,7 +558,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // 計算階梯式運費 - 與 delivery_settings.html 相同
+    // 計算階梯式運費 - 與 admin/shipping.html 相同
     function calculateTieredShipping(quantity, categoryRates) {
         if (categoryRates.length === 0) {
             return { fee: 0, description: '未設定階梯運費' };

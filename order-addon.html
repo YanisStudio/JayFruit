@@ -695,7 +695,7 @@
                             <div class="user-links">
                                 <a href="profile.html"><i class="fas fa-user"></i> 會員資料</a>
                                 <a href="orders.html"><i class="fas fa-shopping-bag"></i> 訂單記錄</a>
-                                <a href="dash_board_pane.html" id="admin-btn-mobile" class="admin-link" style="display: none;"><i class="fas fa-cog"></i> 系統管理</a>
+                                <a href="admin/dashboard.html" id="admin-btn-mobile" class="admin-link" style="display: none;"><i class="fas fa-cog"></i> 系統管理</a>
                                 <a href="#" id="logout-btn-mobile"><i class="fas fa-sign-out-alt"></i> 登出</a>
                             </div>
                         </div>
@@ -724,7 +724,7 @@
                     <div class="user-menu" id="user-menu">
                         <a href="profile.html"><i class="fas fa-user"></i> 會員資料</a>
                         <a href="orders.html"><i class="fas fa-shopping-bag"></i> 訂單記錄</a>
-                        <a href="dash_board_pane.html" id="admin-btn" class="admin-link" style="display: none;"><i class="fas fa-cog"></i> 系統管理</a>
+                        <a href="admin/dashboard.html" id="admin-btn" class="admin-link" style="display: none;"><i class="fas fa-cog"></i> 系統管理</a>
                         <a href="#" id="logout-btn"><i class="fas fa-sign-out-alt"></i> 登出</a>
                     </div>
                 </div>
@@ -927,7 +927,7 @@
             tieredRates: { home: [] }
         };
 
-        // 品類對應表 - 從delivery_settings.html複製
+        // 品類對應表 - 從admin/shipping.html複製
         const categoryMap = {
             'pear': '梨子',
             'persimmon': '柿子', 
@@ -952,7 +952,7 @@
             return 'pear';
         }
 
-        // 階梯式運費計算函數 - 從delivery_settings.html複製並修正
+        // 階梯式運費計算函數 - 從admin/shipping.html複製並修正
         function calculateTieredShipping(quantity, categoryRates) {
             if (categoryRates.length === 0) {
                 return { fee: 0, description: '未設定階梯運費' };
