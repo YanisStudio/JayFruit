@@ -52,7 +52,18 @@
       "PowerShell(Get-Command python3 -ErrorAction SilentlyContinue)",
       "PowerShell(& python --version 2>&1)",
       "PowerShell(& python3 --version 2>&1)",
-      "Bash(git -c user.email=local@snapshot -c 'user.name=pre-fix snapshot' commit -q -m 'Hide unbuilt '\\\\''訊息管理'\\\\'' admin nav card \\(linked to non-existent admin_panel.html\\) *)"
+      "Bash(git -c user.email=local@snapshot -c 'user.name=pre-fix snapshot' commit -q -m 'Hide unbuilt '\\\\''訊息管理'\\\\'' admin nav card \\(linked to non-existent admin_panel.html\\) *)",
+      "Read(//c/Users/yanis.huang/Desktop/**)",
+      "Bash(grep -n -B2 -A6 \"^\\\\.form-group\\\\s*{$\\\\|^\\\\.form-group label\" css/style.css)",
+      "Bash(iconv -f UTF-16LE -t UTF-8 \"C:\\\\Users\\\\yanis.huang\\\\Desktop\\\\admin_panel.html\")",
+      "Bash(rm \"C:\\\\Users\\\\yanis.huang\\\\Desktop\\\\JayFruit-main\\\\.claude\\\\admin_panel_template_utf8.html\" && echo removed)",
+      "PowerShell(Get-Process python -ErrorAction SilentlyContinue)",
+      "PowerShell(Stop-Process -Force -ErrorAction SilentlyContinue)",
+      "PowerShell(\"stopped\")",
+      "Bash(git -c user.email=local@snapshot -c 'user.name=pre-fix snapshot' commit -q -m 'Add message management feature \\(contact form + admin inbox\\) *)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\yanis.huang\\Desktop\\JayFruit-main\\.claude"
     ]
   }
 }
