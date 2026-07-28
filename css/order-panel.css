@@ -41,7 +41,7 @@
 }
 
 .order-item.selected {
-    border-left-color: #4CAF50;
+    border-left-color: #4caf50;
     background-color: #f0f9f0;
 }
 
@@ -273,9 +273,9 @@
 .order-notes {
     margin-bottom: 25px;
     padding: 15px;
-    background-color: #FFF8E1;
+    background-color: #fff8e1;
     border-radius: 6px;
-    border-left: 4px solid #FFB300;
+    border-left: 4px solid #ffb300;
 }
 
 .order-notes h4 {
