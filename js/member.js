@@ -36,28 +36,36 @@ function injectBrowserWarningStyles() {
         }
 
         .browser-warning-icon {
-            font-size: 3rem;
-            color: #ff6b6b;
-            margin-bottom: 20px;
+            width: 56px;
+            height: 56px;
+            margin: 0 auto 18px;
+            border-radius: 50%;
+            background: #eaf5ea;
+            color: #4caf50;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .browser-warning-content h2 {
-            color: #333;
-            margin: 0 0 15px 0;
-            font-size: 1.5rem;
+            color: #2c3e2f;
+            margin: 0 0 12px 0;
+            font-size: 1.3rem;
         }
 
         .browser-warning-content p {
             color: #666;
             line-height: 1.6;
             margin: 10px 0;
+            font-size: 0.95rem;
         }
 
         .browser-buttons {
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            margin-top: 25px;
+            gap: 10px;
+            margin-top: 22px;
         }
 
         .browser-btn {
@@ -68,92 +76,41 @@ function injectBrowserWarningStyles() {
             border-radius: 10px;
             font-weight: 600;
             text-decoration: none;
-            transition: all 0.3s ease;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
             cursor: pointer;
             font-family: inherit;
         }
 
-        .browser-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-        }
-
         /* Chrome 按鈕 - 主要行動按鈕 */
         .chrome-btn {
-            background: linear-gradient(135deg, #4285f4, #1976d2);
+            background: #4caf50;
             color: white;
-            padding: 18px 25px;
-            font-size: 1.1rem;
-            box-shadow: 0 4px 15px rgba(66, 133, 244, 0.3);
-            animation: chromePulse 2s ease-in-out infinite;
+            padding: 15px 25px;
+            font-size: 1rem;
         }
 
         .chrome-btn:hover {
-            background: linear-gradient(135deg, #3367d6, #1565c0);
-            box-shadow: 0 6px 20px rgba(66, 133, 244, 0.4);
-            transform: translateY(-3px);
+            background: #3d8b40;
         }
 
         .chrome-btn i {
-            margin-right: 12px;
-            font-size: 1.3rem;
+            margin-right: 10px;
+            font-size: 1.1rem;
         }
 
         /* 繼續使用按鈕 - 次要選項 */
         .continue-btn {
             background: transparent;
             color: #999;
-            border: 1px solid #ddd;
-            padding: 10px 15px;
-            font-size: 0.85rem;
-            margin-top: 15px;
+            border: 1px solid #e0e0e0;
+            padding: 12px 15px;
+            font-size: 0.9rem;
         }
 
         .continue-btn:hover {
-            background: #f5f5f5;
+            background: #f7f7f7;
+            border-color: #ccc;
             color: #666;
-            transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .continue-btn i {
-            margin-right: 8px;
-            font-size: 0.9rem;
-        }
-
-        /* Chrome 按鈕脈衝動畫 */
-        @keyframes chromePulse {
-            0%, 100% { 
-                transform: scale(1);
-                box-shadow: 0 4px 15px rgba(66, 133, 244, 0.3);
-            }
-            50% { 
-                transform: scale(1.02);
-                box-shadow: 0 6px 20px rgba(66, 133, 244, 0.4);
-            }
-        }
-
-        /* 添加說明文字 */
-        .chrome-benefits {
-            background: #e3f2fd;
-            border-left: 4px solid #2196f3;
-            padding: 12px 15px;
-            margin: 15px 0;
-            border-radius: 5px;
-            text-align: left;
-            font-size: 0.9rem;
-        }
-
-        .chrome-benefits h4 {
-            margin: 0 0 8px 0;
-            color: #1976d2;
-            font-size: 1rem;
-        }
-
-        .chrome-benefits p {
-            margin: 0;
-            color: #555;
-            line-height: 1.4;
         }
 
         @keyframes browserSlideIn {
@@ -193,25 +150,19 @@ function injectBrowserWarningHTML() {
         <div id="browser-warning" class="browser-warning" style="display: none;">
             <div class="browser-warning-content">
                 <div class="browser-warning-icon">
-                    <i class="fas fa-exclamation-triangle"></i>
+                    <i class="fas fa-compass"></i>
                 </div>
-                
-                <h2>建議使用外部瀏覽器</h2>
-                <p>您目前使用的是 ${window.BrowserDetection ? window.BrowserDetection.getBrowserName() : 'LINE'} 內建瀏覽器，某些功能可能無法正常使用。</p>
-                
-                <div class="chrome-benefits">
-                    <h4>🚀 使用 Chrome 的優勢：</h4>
-                    <p>• 完整功能支援，登入更順暢<br>• 更快的載入速度<br>• 更安全的瀏覽體驗</p>
-                </div>
+
+                <h2>建議用外部瀏覽器開啟</h2>
+                <p>您目前是透過 ${window.BrowserDetection ? window.BrowserDetection.getBrowserName() : 'LINE'} 內建瀏覽器瀏覽，Google／Facebook 登入可能無法正常運作。建議切換到 Chrome，體驗會更完整順暢。</p>
 
                 <div class="browser-buttons">
                     <button class="browser-btn chrome-btn" onclick="window.BrowserDetection.openInGoogleChrome()">
                         <i class="fab fa-chrome"></i>
-                        立即使用 Google Chrome 開啟
+                        用 Chrome 開啟
                     </button>
                     <button class="browser-btn continue-btn" onclick="window.BrowserDetection.continueWithCurrentBrowser()">
-                        <i class="fas fa-forward"></i>
-                        略過並繼續
+                        略過，繼續瀏覽
                     </button>
                 </div>
             </div>
