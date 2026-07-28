@@ -402,6 +402,7 @@ async function loadProducts() {
         
         if (products.length === 0) {
             productGrid.innerHTML = '<div class="no-products">目前沒有可用的產品</div>';
+            updatePaginationButtons(0);
             return;
         }
         
