@@ -144,6 +144,7 @@ header .container {
 }
 
 .logo-image {
+    width: auto; /* 避免在 flex 容器中，加了 width/height 屬性後被撐寬變形 */
     height: 3.75em; /* 改用em */
     margin-right: 1em; /* 改用em */
 }
@@ -397,7 +398,7 @@ nav ul li a:hover::after {
 
 /* 首頁英雄區域 - 更新為背景圖片並淡化處理 */
 .hero {
-    background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('../images/garden-hero-bg.png');
+    background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('../images/garden-hero-bg.jpg');
     background-size: cover;
     background-position: center;
     background-attachment: fixed; /* 視差滾動效果 */
@@ -2043,7 +2044,7 @@ footer {
     .hero {
         padding: 5em 0;
         /* 保持背景圖片效果 */
-        background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('../images/garden-hero-bg.png');
+        background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('../images/garden-hero-bg.jpg');
         background-size: cover;
         background-position: center;
         background-repeat: no-repeat;
@@ -2950,18 +2951,6 @@ footer {
         background-position: center center;
         transform: translateZ(0);
         -webkit-transform: translateZ(0);
-    }
-}
-
-/* 高密度屏幕優化 */
-@media only screen and (-webkit-min-device-pixel-ratio: 2),
-       only screen and (min--moz-device-pixel-ratio: 2),
-       only screen and (-o-min-device-pixel-ratio: 2/1),
-       only screen and (min-device-pixel-ratio: 2),
-       only screen and (min-resolution: 192dpi),
-       only screen and (min-resolution: 2dppx) {
-    .hero {
-        background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('../images/garden-hero-bg@2x.png');
     }
 }
 
