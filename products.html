@@ -425,7 +425,7 @@ function renderProducts(products) {
     const productGrids = document.querySelectorAll('.product-grid');
     productGrids.forEach(grid => grid.innerHTML = '');
     
-    const productsPerPage = 9;
+    const productsPerPage = 12;
     const totalPages = Math.ceil(products.length / productsPerPage);
     
     for (let i = 0; i < Math.min(totalPages, 3); i++) {
