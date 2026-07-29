@@ -1142,6 +1142,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         try {
             const provider = new FacebookAuthProvider();
+            provider.addScope('email');
             provider.setCustomParameters({
                 'locale': 'zh_TW'
             });
