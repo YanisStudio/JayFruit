@@ -648,8 +648,8 @@
                 
                 html += `
                     <tr data-user-id="${user.id}">
-                        <td>${window.AdminCommon.escapeHtml(user.name)}</td>
-                        <td>${window.AdminCommon.escapeHtml(user.email)}</td>
+                        <td>${window.AdminCommon.escapeHtml(user.name) || '未填寫'}</td>
+                        <td>${window.AdminCommon.escapeHtml(user.email) || '未提供'}</td>
                         <td>${window.AdminCommon.escapeHtml(user.phone) || '未提供'}</td>
                         <td>${createdDate}</td>
                         <td>${lastLoginText}</td>
@@ -786,9 +786,9 @@
             
             // 按關鍵字過濾
             if (searchTerm) {
-                result = result.filter(user => 
-                    user.name.toLowerCase().includes(searchTerm) || 
-                    user.email.toLowerCase().includes(searchTerm)
+                result = result.filter(user =>
+                    (user.name || '').toLowerCase().includes(searchTerm) ||
+                    (user.email || '').toLowerCase().includes(searchTerm)
                 );
             }
             
