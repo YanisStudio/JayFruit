@@ -1257,12 +1257,12 @@ async function showOrderDetail(orderId) {
                 orderItemsHTML += `
                     <div class="order-item-detail" data-product-id="${item.id || '未知ID'}">
                         <div class="item-image">
-                            <img src="${imageUrl}" 
-                                 alt="${item.name}"
+                            <img src="${imageUrl}"
+                                 alt="${window.escapeHtml(item.name)}"
                                  onerror="this.onerror=null; this.src='images/placeholder.jpg';">
                         </div>
                         <div class="item-info">
-                            <h4>${item.name}</h4>
+                            <h4>${window.escapeHtml(item.name)}</h4>
                             <p class="item-price">${item.price} x <span class="item-quantity">${item.quantity}</span></p>
                         </div>
                         <div class="item-total">${item.price * item.quantity}</div>
@@ -1297,7 +1297,7 @@ async function showOrderDetail(orderId) {
             
             order.addonHistory.forEach((addon, index) => {
                 const addonDate = new Date(addon.date).toLocaleString('zh-TW');
-                const addonItems = addon.items.map(item => `${item.name} x${item.quantity}`).join(', ');
+                const addonItems = addon.items.map(item => `${window.escapeHtml(item.name)} x${item.quantity}`).join(', ');
                 
                 addonHistoryHTML += `
                     <div class="addon-entry">

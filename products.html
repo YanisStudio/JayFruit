@@ -450,20 +450,20 @@ function renderProductsToPage(products, pageNumber) {
         const stockClass = product.stock < 5 ? 'low-stock' : '';
         
         productsHTML += `
-            <div class="product-card" 
-                data-product-id="${product.id}" 
-                data-product-name="${product.name}" 
-                data-product-price="${product.price}" 
+            <div class="product-card"
+                data-product-id="${product.id}"
+                data-product-name="${window.escapeHtml(product.name)}"
+                data-product-price="${product.price}"
                 data-product-stock="${product.stock}"
                 data-category="${product.category}">
                 <div class="product-image">
                     ${tagHTML}
-                    <img src="${product.imageUrl || 'images/placeholder.jpg'}" alt="${product.name}" onerror="this.onerror=null; this.src='images/placeholder.jpg';">
+                    <img src="${product.imageUrl || 'images/placeholder.jpg'}" alt="${window.escapeHtml(product.name)}" onerror="this.onerror=null; this.src='images/placeholder.jpg';">
                 </div>
                 <div class="product-info">
                     <div class="product-content">
-                        <h3>${product.name}</h3>
-                        <p class="product-desc">${product.description}</p>
+                        <h3>${window.escapeHtml(product.name)}</h3>
+                        <p class="product-desc">${window.escapeHtml(product.description)}</p>
                         <p class="product-price">$${product.price}/${product.unit}</p>
                         <p class="stock-info ${stockClass}">${stockText}</p>
                     </div>

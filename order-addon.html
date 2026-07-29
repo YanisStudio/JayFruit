@@ -1262,12 +1262,12 @@
                 itemsHTML += `
                     <div class="original-item-card">
                         <div class="original-item-info">
-                            <img src="${item.imageUrl || 'images/placeholder.jpg'}" 
-                                 alt="${item.name}" 
+                            <img src="${item.imageUrl || 'images/placeholder.jpg'}"
+                                 alt="${window.escapeHtml(item.name)}"
                                  class="original-item-image"
                                  onerror="this.src='images/placeholder.jpg'">
                             <div class="original-item-details">
-                                <div class="original-item-name">${item.name}</div>
+                                <div class="original-item-name">${window.escapeHtml(item.name)}</div>
                                 <div class="original-item-price">NT$ ${item.price}/${item.unit || '個'}</div>
                                 <div class="original-item-quantity">數量: ${item.quantity}</div>
                             </div>
@@ -1319,11 +1319,11 @@
                     <div class="addon-product-card" data-product-id="${product.id}">
                         <div class="addon-product-image">
                             ${tagHTML}
-                            <img src="${product.imageUrl}" alt="${product.name}" onerror="this.src='images/placeholder.jpg'">
+                            <img src="${product.imageUrl}" alt="${window.escapeHtml(product.name)}" onerror="this.src='images/placeholder.jpg'">
                         </div>
                         <div class="addon-product-info">
-                            <h3>${product.name}</h3>
-                            <p class="addon-product-desc">${product.description}</p>
+                            <h3>${window.escapeHtml(product.name)}</h3>
+                            <p class="addon-product-desc">${window.escapeHtml(product.description)}</p>
                             <p class="addon-product-price">NT$ ${product.price}/${product.unit}</p>
                             <p class="stock-info">${stockText}</p>
                             <div class="addon-product-actions">
@@ -1437,7 +1437,7 @@
                 itemsHTML += `
                     <div class="addon-item">
                         <div class="addon-item-info">
-                            <div class="addon-item-name">${item.name}</div>
+                            <div class="addon-item-name">${window.escapeHtml(item.name)}</div>
                             <div class="addon-item-details">NT$ ${item.price}/${item.unit} x ${item.quantity} = NT$ ${item.price * item.quantity}</div>
                         </div>
                         <div class="addon-item-actions">

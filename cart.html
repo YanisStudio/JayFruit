@@ -934,9 +934,9 @@ async function renderCart() {
                 <tr>
                     <td class="product-cell">
                         <div class="product-info">
-                            <img src="${imageUrl}" alt="${item.name}" class="product-thumbnail" onerror="this.src='images/placeholder.jpg'">
+                            <img src="${imageUrl}" alt="${window.escapeHtml(item.name)}" class="product-thumbnail" onerror="this.src='images/placeholder.jpg'">
                             <div class="product-details">
-                                <h3>${item.name}</h3>
+                                <h3>${window.escapeHtml(item.name)}</h3>
                                 <p class="stock-info ${stockClass}">${stockText}</p>
                             </div>
                         </div>
@@ -1022,7 +1022,7 @@ function updateOrderSummary(cartItems, subtotal, shippingResult, totalAmount) {
             const itemTotal = item.price * item.quantity;
             summaryHTML += `
                 <div class="summary-row item-detail">
-                    <span class="item-info">${item.name} × ${item.quantity}</span>
+                    <span class="item-info">${window.escapeHtml(item.name)} × ${item.quantity}</span>
                     <span class="item-price">NT$ ${itemTotal}</span>
                 </div>
             `;
