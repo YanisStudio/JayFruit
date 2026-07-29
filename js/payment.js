@@ -250,7 +250,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (productDoc.exists()) {
                         const productData = productDoc.data();
                         const currentStock = productData.stock || 0;
-                        
+
+                        // 記錄 Firestore 裡真實的商品資料，稍後建立訂單時會用這份取代購物車裡的內容
+                        verifiedProducts[item.id] = { price: productData.price, name: productData.name };
+
                         stockValidationResults.push({
                             id: item.id,
                             name: item.name,
@@ -484,7 +487,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 獲取購物車數據
     let cart = JSON.parse(localStorage.getItem('cart')) || [];
-    
+
+    // 商品的真實資料（在 validateCartStockRealtime() 驗證庫存時一併從 Firestore 取得），
+    // 送出訂單前會用這份資料覆蓋購物車裡的價格與名稱，避免有人竄改 localStorage 裡的金額或商品名稱
+    let verifiedProducts = {};
+
     // 如果購物車為空，返回購物車頁面
     if (cart.length === 0) {
         showToast('您的購物車是空的，請先添加商品。');
@@ -1044,10 +1051,21 @@ async function generateShippingOptions() {
             const senderPhone = isGift ? document.getElementById('sender-phone').value : '';
             const senderAddress = isGift ? document.getElementById('sender-address').value : '';
             
-            const subtotal = parseInt(subtotalElem.textContent.replace(/[^\d]/g, ''));
+            // 用剛才驗證庫存時取得的真實價格覆蓋購物車價格，
+            // 避免有人竄改瀏覽器裡的 localStorage 購物車金額後直接送出訂單
+            const verifiedCart = cart.map(item => {
+                const verified = verifiedProducts[item.id];
+                return {
+                    ...item,
+                    price: (verified && typeof verified.price === 'number') ? verified.price : item.price,
+                    name: (verified && verified.name) ? verified.name : item.name
+                };
+            });
+
+            const subtotal = verifiedCart.reduce((sum, item) => sum + item.price * item.quantity, 0);
             const shippingFee = window.currentShippingResult ? window.currentShippingResult.fee : 0;
             const total = subtotal + shippingFee;
-            
+
             // 建立訂單對象
             const orderData = {
                 customer: {
@@ -1060,7 +1078,7 @@ async function generateShippingOptions() {
                 shippingFee: shippingFee,
                 shippingDetails: window.currentShippingResult || {},
                 payment: payment,
-                items: cart,
+                items: verifiedCart,
                 subtotal: subtotal,
                 total: total,
                 notes: notes,
