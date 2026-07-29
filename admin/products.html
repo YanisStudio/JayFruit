@@ -212,6 +212,21 @@
             margin-bottom: 8px;
         }
 
+        .batch-selected-info {
+            font-size: 14px;
+            color: #555;
+            margin: 0 0 10px;
+        }
+
+        .batch-instant-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px dashed #ddd;
+        }
+
         .batch-schedule-hint {
             margin: 0;
             font-size: 13px;
@@ -714,8 +729,19 @@
                     </div>
                 </div>
 
-                <!-- 批次排程上下架 -->
+                <!-- 批次上下架 / 排程 -->
                 <div class="batch-schedule-panel">
+                    <p class="batch-selected-info">已選擇 <span id="selected-count">0</span> 項商品</p>
+
+                    <div class="batch-instant-actions">
+                        <button type="button" class="btn btn-success" id="instant-publish-btn">
+                            <i class="fas fa-eye"></i> 立即上架
+                        </button>
+                        <button type="button" class="btn btn-secondary" id="instant-unpublish-btn">
+                            <i class="fas fa-eye-slash"></i> 立即下架
+                        </button>
+                    </div>
+
                     <div class="batch-schedule-fields">
                         <div class="form-group">
                             <label for="batch-publish-at">上架時間（選填）</label>
@@ -728,7 +754,7 @@
                     </div>
                     <div class="batch-schedule-actions">
                         <button type="button" class="btn btn-primary" id="apply-schedule-btn">
-                            <i class="fas fa-clock"></i> 套用排程（已選 <span id="selected-count">0</span> 項）
+                            <i class="fas fa-clock"></i> 套用排程
                         </button>
                         <button type="button" class="btn btn-outline" id="clear-schedule-btn">
                             清除所選商品的排程
@@ -911,6 +937,20 @@
             const clearScheduleBtn = document.getElementById('clear-schedule-btn');
             if (clearScheduleBtn) {
                 clearScheduleBtn.addEventListener('click', clearSchedule);
+            }
+
+            // 綁定立即上架／下架按鈕
+            const instantPublishBtn = document.getElementById('instant-publish-btn');
+            if (instantPublishBtn) {
+                instantPublishBtn.addEventListener('click', function() {
+                    setStatusForSelected('active');
+                });
+            }
+            const instantUnpublishBtn = document.getElementById('instant-unpublish-btn');
+            if (instantUnpublishBtn) {
+                instantUnpublishBtn.addEventListener('click', function() {
+                    setStatusForSelected('inactive');
+                });
             }
 
             // 初始化圖片預覽功能
@@ -1319,6 +1359,43 @@
             } catch (error) {
                 console.error('清除排程失敗:', error);
                 alert('清除排程失敗: ' + error.message);
+            } finally {
+                hideLoading();
+            }
+        };
+
+        // 立即上架／下架所選商品（不經排程，直接改狀態；同時清掉該商品原本的排程設定，避免之後被排程系統又改回去）
+        const setStatusForSelected = async function(newStatus) {
+            const selectedIds = getSelectedProductIds();
+            if (selectedIds.length === 0) {
+                alert('請先勾選要操作的商品');
+                return;
+            }
+
+            const actionText = newStatus === 'active' ? '上架' : '下架';
+            if (!confirm(`確定要將所選 ${selectedIds.length} 項商品立即${actionText}嗎？`)) {
+                return;
+            }
+
+            showLoading();
+            try {
+                const db = window.firebaseServices.db;
+                const deleteField = window.firebaseServices.deleteField;
+                const batch = window.firebaseServices.writeBatch(db);
+                selectedIds.forEach(id => {
+                    const productRef = window.firebaseServices.doc(db, 'products', id);
+                    batch.update(productRef, {
+                        status: newStatus,
+                        scheduledPublishAt: deleteField(),
+                        scheduledUnpublishAt: deleteField()
+                    });
+                });
+                await batch.commit();
+                alert(`已將 ${selectedIds.length} 項商品設為${actionText}`);
+                loadProducts();
+            } catch (error) {
+                console.error(`立即${actionText}失敗:`, error);
+                alert(`立即${actionText}失敗: ` + error.message);
             } finally {
                 hideLoading();
             }
