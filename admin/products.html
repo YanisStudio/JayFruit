@@ -845,11 +845,8 @@
                     }
                 });
             }
-            
-            // 測試 Firestore 寫入權限
-            testFirestoreAccess();
         };
-        
+
         // 加載當前精選商品
         const loadCurrentFeaturedProducts = async function() {
             try {
@@ -920,30 +917,6 @@
             } finally {
                 hideLoading();
             }
-        };
-        
-        // 測試 Firestore 寫入權限
-        const testFirestoreAccess = function() {
-            console.log('開始測試 Firestore 寫入...');
-            const db = window.firebaseServices.db;
-            const testData = {
-                name: '測試商品',
-                timestamp: new Date(),
-                test: true
-            };
-            
-            window.firebaseServices.addDoc(window.firebaseServices.collection(db, "test_writes"), testData)
-                .then((docRef) => {
-                    console.log('Firestore 寫入測試成功，文檔 ID:', docRef.id);
-                    // 測試成功後刪除該測試文檔
-                    window.firebaseServices.deleteDoc(window.firebaseServices.doc(db, "test_writes", docRef.id))
-                        .then(() => console.log('測試文檔已刪除'));
-                })
-                .catch((error) => {
-                    console.error('Firestore 寫入測試失敗:', error);
-                    console.error('錯誤詳情:', error.code, error.message);
-                    alert('Firestore 寫入測試失敗，請檢查 Firestore 權限設置。錯誤: ' + error.message);
-                });
         };
         
         // 加載商品列表 - 修改版本，包含精選商品按鈕
@@ -1018,10 +991,10 @@
                                     <tr>
                                         <td>${productId.substring(0, 6)}...</td>
                                         <td>
-                                            <img src="${product.imageUrl || 'images/placeholder.jpg'}" alt="${product.name}" class="product-thumbnail" onerror="this.onerror=null; this.src='images/placeholder.jpg';">
+                                            <img src="${product.imageUrl || 'images/placeholder.jpg'}" alt="${window.AdminCommon.escapeHtml(product.name)}" class="product-thumbnail" onerror="this.onerror=null; this.src='images/placeholder.jpg';">
                                         </td>
                                         <td>
-                                            ${product.name}
+                                            ${window.AdminCommon.escapeHtml(product.name)}
                                             ${featuredBadge}
                                         </td>
                                         <td>${categoryText}</td>
