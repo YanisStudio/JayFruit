@@ -1096,7 +1096,8 @@
             window.firebaseServices.onAuthStateChanged(window.firebaseServices.auth, async function(user) {
                 if (user) {
                     await loadShippingSettings();
-                    await loadOriginalOrder(orderId);
+                    const ownOrder = await loadOriginalOrder(orderId, user);
+                    if (!ownOrder) return;
                     await loadAvailableProducts();
                     initAddonFunctionality();
                 } else {
@@ -1177,36 +1178,45 @@
             }
         }
 
-        async function loadOriginalOrder(orderId) {
+        async function loadOriginalOrder(orderId, currentUser) {
             try {
                 showLoading('載入訂單資訊中...');
-                
+
                 const orderDoc = await window.firebaseServices.getDoc(
                     window.firebaseServices.doc(window.firebaseServices.db, 'orders', orderId)
                 );
-                
+
                 if (!orderDoc.exists()) {
                     throw new Error('找不到指定的訂單');
                 }
-                
+
                 originalOrder = orderDoc.data();
                 originalOrder.id = orderDoc.id;
-                
+
+                // 訂單網址（?orderId=...）任何人都看得到、猜得到不算難，
+                // 一定要確認訂單真的是目前登入的這位用戶本人的，否則任何人都能看到
+                // 甚至加購/竄改別人的訂單內容
+                if (!currentUser || originalOrder.userId !== currentUser.uid) {
+                    throw new Error('此訂單不屬於您的帳號，無法查看或加購');
+                }
+
                 console.log('載入的原訂單:', originalOrder);
-                
+
                 // 檢查訂單狀態是否允許加購
                 if (!canAddToOrder(originalOrder.status)) {
                     throw new Error('此訂單狀態不允許加購');
                 }
-                
+
                 displayOriginalOrderInfo();
                 displayOriginalItems();
                 hideLoading(); // 添加這行來隱藏載入畫面
-                
+                return true;
+
             } catch (error) {
                 console.error('載入原訂單失敗:', error);
                 hideLoading(); // 確保錯誤時也隱藏載入畫面
                 showError('載入訂單失敗: ' + error.message);
+                return false;
             }
         }
 
