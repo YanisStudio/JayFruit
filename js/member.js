@@ -1086,10 +1086,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     console.log('Google 登入成功:', user.uid);
                     
                     saveUserState(user);
-                    const displayName = user.displayName || user.email.split('@')[0];
+                    const displayName = user.displayName || user.email?.split('@')[0] || 'Google用戶';
                     localStorage.setItem('userName', displayName);
                     checkIfAdmin(user);
-                    
+
                     // 保存或更新用戶資料到 Firestore
                     await saveUserToFirestore(user, displayName, 'google');
                     
@@ -1302,17 +1302,24 @@ document.addEventListener('DOMContentLoaded', function() {
         // 檢查重定向結果
         if (getRedirectResult) {
             getRedirectResult(auth)
-                .then((result) => {
+                .then(async (result) => {
                     if (result) {
                         const user = result.user;
                         console.log('重定向登入成功:', user.uid);
-                        
+
                         const displayName = user.displayName || user.email?.split('@')[0] || '用戶';
                         saveUserState(user);
                         localStorage.setItem('userName', displayName);
                         checkIfAdmin(user);
+
+                        // 彈窗被瀏覽器擋掉、改用重定向登入時，這條路徑之前完全沒呼叫
+                        // saveUserToFirestore，導致這樣登入的用戶從未被寫入 Firestore
+                        const redirectProviderId = user.providerData[0]?.providerId || '';
+                        const redirectProvider = redirectProviderId.includes('facebook') ? 'facebook' : 'google';
+                        await saveUserToFirestore(user, displayName, redirectProvider);
+
                         updateLoginUI(user);
-                        
+
                         showMemberSuccessModal('登入成功', '登入成功！');
                     }
                 })
