@@ -653,7 +653,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const usernameDisplay = document.getElementById('username-display');
     const loginBtn = document.getElementById('login-btn');
     const logoutBtn = document.getElementById('logout-btn');
-    const userDropdownBtn = document.getElementById('user-dropdown-btn');
     const userMenu = document.getElementById('user-menu');
     
     // 獲取管理員按鈕元素
@@ -1329,20 +1328,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
         }
 
-        // 點擊用戶名稱顯示下拉選單
-        if (userDropdownBtn) {
-            userDropdownBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                userMenu.style.display = userMenu.style.display === 'block' ? 'none' : 'block';
-            });
-
-            // 點擊頁面其他區域關閉下拉選單
-            document.addEventListener('click', function(event) {
-                if (!userDropdownBtn.contains(event.target) && !userMenu.contains(event.target)) {
-                    userMenu.style.display = 'none';
-                }
-            });
-        }
+        // 用戶下拉選單的開關綁定由 common.js（前台）/ admin-common.js（後台）統一處理，
+        // 這裡不再重複綁定，避免同一顆按鈕被綁兩個監聽器導致點擊互相抵銷。
 
         // 處理用戶登出 (通用函數)
         function handleLogout() {
