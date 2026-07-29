@@ -34,8 +34,9 @@ class AuthModals {
                             使用 Google 登入
                         </button>
                         
-                        <!-- Facebook 登入按鈕 -->
-                        <button type="button" class="btn btn-facebook" id="facebook-login-btn">
+                        <!-- Facebook 登入按鈕（暫時隱藏：Facebook App 尚未完成 Meta 商家驗證，
+                             一般顧客目前無法用 Facebook 登入成功；驗證通過後把 style="display:none" 拿掉即可重新開放） -->
+                        <button type="button" class="btn btn-facebook" id="facebook-login-btn" style="display:none;">
                             <i class="fab fa-facebook-f"></i>
                             使用 Facebook 登入
                         </button>
