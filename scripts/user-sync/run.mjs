@@ -102,24 +102,29 @@ async function main() {
         if (!data.phone && phone) patch.phone = phone;
         if (!data.name && name) patch.name = name;
 
-        // 註冊時間比最後登入時間還晚，邏輯上不可能發生
-        // （通常是 profile.html 跟 member.js 同時搶寫 Firestore 造成的），
-        // 用 Authentication 的權威時間校正回去
+        // createdAt / lastLoginAt 缺欄位，或註冊時間比最後登入時間還晚
+        // （邏輯上不可能發生，通常是 profile.html 跟 member.js 同時搶寫 Firestore 造成的），
+        // 用 Authentication 的權威時間補上/校正回去。
+        // 注意：admin/users.html 過去在 createdAt 缺欄位時會直接 fallback 顯示「今天」，
+        // 讓人誤以為資料庫被寫壞了，其實只是欄位是空的——這邊統一用真正缺欄位/順序顛倒來判斷
         const createdMs = toMillis(data.createdAt);
         const lastLoginMs = toMillis(data.lastLoginAt);
-        let timeFixed = false;
-        if (createdMs !== null && lastLoginMs !== null && createdMs > lastLoginMs) {
+        const isReversed = createdMs !== null && lastLoginMs !== null && createdMs > lastLoginMs;
+        const missingCreatedAt = createdMs === null;
+        const missingLastLoginAt = lastLoginMs === null;
+        let dateReason = null;
+        if (isReversed || missingCreatedAt || missingLastLoginAt) {
             const { creationTime, lastSignInTime } = getAuthTimes(userRecord);
-            patch.createdAt = creationTime;
-            patch.lastLoginAt = lastSignInTime;
-            timeFixed = true;
+            if (isReversed || missingCreatedAt) patch.createdAt = creationTime;
+            if (isReversed || missingLastLoginAt) patch.lastLoginAt = lastSignInTime;
+            dateReason = isReversed ? '時間顛倒' : '缺日期欄位';
         }
 
         if (Object.keys(patch).length > 0) {
             await userRef.update(patch);
             backfilled++;
-            if (timeFixed) {
-                console.log(`修正時間顛倒 ${userRecord.uid}:`, patch);
+            if (dateReason) {
+                console.log(`修正${dateReason} ${userRecord.uid}:`, patch);
             } else {
                 console.log(`補齊會員資料 ${userRecord.uid}:`, patch);
             }
