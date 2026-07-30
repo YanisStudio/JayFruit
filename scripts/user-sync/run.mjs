@@ -98,9 +98,19 @@ async function main() {
 
         const data = userSnap.data();
         const patch = {};
+        const reasons = [];
         if (!data.email && email) patch.email = email;
         if (!data.phone && phone) patch.phone = phone;
         if (!data.name && name) patch.name = name;
+
+        // provider 欄位跟 Authentication 記錄的實際登入方式不一致，會讓
+        // admin/users.html 編輯彈窗鎖錯欄位（例如電話登入的人卻鎖住電子郵件），
+        // 用 Authentication 的權威資料校正
+        const authProvider = detectProvider(userRecord);
+        if (authProvider !== 'unknown' && data.provider !== authProvider) {
+            patch.provider = authProvider;
+            reasons.push('登入方式不符');
+        }
 
         // createdAt / lastLoginAt 缺欄位，或註冊時間比最後登入時間還晚
         // （邏輯上不可能發生，通常是 profile.html 跟 member.js 同時搶寫 Firestore 造成的），
@@ -112,22 +122,18 @@ async function main() {
         const isReversed = createdMs !== null && lastLoginMs !== null && createdMs > lastLoginMs;
         const missingCreatedAt = createdMs === null;
         const missingLastLoginAt = lastLoginMs === null;
-        let dateReason = null;
         if (isReversed || missingCreatedAt || missingLastLoginAt) {
             const { creationTime, lastSignInTime } = getAuthTimes(userRecord);
             if (isReversed || missingCreatedAt) patch.createdAt = creationTime;
             if (isReversed || missingLastLoginAt) patch.lastLoginAt = lastSignInTime;
-            dateReason = isReversed ? '時間顛倒' : '缺日期欄位';
+            reasons.push(isReversed ? '時間顛倒' : '缺日期欄位');
         }
 
         if (Object.keys(patch).length > 0) {
             await userRef.update(patch);
             backfilled++;
-            if (dateReason) {
-                console.log(`修正${dateReason} ${userRecord.uid}:`, patch);
-            } else {
-                console.log(`補齊會員資料 ${userRecord.uid}:`, patch);
-            }
+            const tag = reasons.length > 0 ? `修正${reasons.join('、')}` : '補齊會員資料';
+            console.log(`${tag} ${userRecord.uid}:`, patch);
         }
     }
 
