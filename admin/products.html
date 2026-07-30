@@ -212,25 +212,19 @@
             margin-bottom: 8px;
         }
 
-        .batch-selected-info {
-            font-size: 14px;
-            color: #555;
-            margin: 0 0 10px;
-        }
-
-        .batch-instant-actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 15px;
-            padding-bottom: 15px;
-            border-bottom: 1px dashed #ddd;
-        }
-
         .batch-schedule-hint {
-            margin: 0;
+            margin: 0 0 12px;
             font-size: 13px;
             color: #888;
+        }
+
+        .batch-schedule-hint:last-child {
+            margin-bottom: 0;
+        }
+
+        .batch-schedule-divider {
+            border-top: 1px dashed #ddd;
+            margin: 15px 0;
         }
 
         .schedule-cell {
@@ -731,17 +725,6 @@
 
                 <!-- 批次上下架 / 排程 -->
                 <div class="batch-schedule-panel">
-                    <p class="batch-selected-info">已選擇 <span id="selected-count">0</span> 項商品</p>
-
-                    <div class="batch-instant-actions">
-                        <button type="button" class="btn btn-success" id="instant-publish-btn">
-                            <i class="fas fa-eye"></i> 立即上架
-                        </button>
-                        <button type="button" class="btn btn-secondary" id="instant-unpublish-btn">
-                            <i class="fas fa-eye-slash"></i> 立即下架
-                        </button>
-                    </div>
-
                     <div class="batch-schedule-fields">
                         <div class="form-group">
                             <label for="batch-publish-at">上架時間（選填）</label>
@@ -754,13 +737,25 @@
                     </div>
                     <div class="batch-schedule-actions">
                         <button type="button" class="btn btn-primary" id="apply-schedule-btn">
-                            <i class="fas fa-clock"></i> 套用排程
+                            <i class="fas fa-clock"></i> 套用排程（已選 <span id="selected-count">0</span> 項）
                         </button>
                         <button type="button" class="btn btn-outline" id="clear-schedule-btn">
                             清除所選商品的排程
                         </button>
                     </div>
-                    <p class="batch-schedule-hint">先勾選下方要排程的商品，再填時間並套用；系統每 3 小時檢查一次並自動更新狀態。</p>
+                    <p class="batch-schedule-hint">先勾選下方要排程的商品，再填時間並套用；系統約每 3 小時檢查一次並自動變更狀態。</p>
+
+                    <div class="batch-schedule-divider"></div>
+
+                    <div class="batch-schedule-actions">
+                        <button type="button" class="btn btn-success" id="publish-now-btn">
+                            <i class="fas fa-eye"></i> 立即上架
+                        </button>
+                        <button type="button" class="btn btn-danger" id="unpublish-now-btn">
+                            <i class="fas fa-eye-slash"></i> 立即下架
+                        </button>
+                    </div>
+                    <p class="batch-schedule-hint">不用等排程，直接把已勾選的商品狀態立刻改成上架/下架；如果該商品原本有設定排程時間，會一併清掉，避免之後排程又把狀態改回去。</p>
                 </div>
 
                 <div class="table-responsive product-table-container">
@@ -940,15 +935,15 @@
             }
 
             // 綁定立即上架／下架按鈕
-            const instantPublishBtn = document.getElementById('instant-publish-btn');
-            if (instantPublishBtn) {
-                instantPublishBtn.addEventListener('click', function() {
+            const publishNowBtn = document.getElementById('publish-now-btn');
+            if (publishNowBtn) {
+                publishNowBtn.addEventListener('click', function() {
                     setStatusForSelected('active');
                 });
             }
-            const instantUnpublishBtn = document.getElementById('instant-unpublish-btn');
-            if (instantUnpublishBtn) {
-                instantUnpublishBtn.addEventListener('click', function() {
+            const unpublishNowBtn = document.getElementById('unpublish-now-btn');
+            if (unpublishNowBtn) {
+                unpublishNowBtn.addEventListener('click', function() {
                     setStatusForSelected('inactive');
                 });
             }
