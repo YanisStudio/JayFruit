@@ -40,7 +40,7 @@ async function initializeFirebase() {
             onAuthStateChanged,
             signOut
         } = await import("https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js");
-        const { 
+        const {
             getFirestore,
             collection,
             addDoc,
@@ -54,7 +54,9 @@ async function initializeFirebase() {
             orderBy,
             where,
             limit,
-            serverTimestamp 
+            serverTimestamp,
+            writeBatch,
+            deleteField
         } = await import("https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js");
         const {
             getStorage,
@@ -93,6 +95,8 @@ async function initializeFirebase() {
             where,
             limit,
             serverTimestamp,
+            writeBatch,
+            deleteField,
             // Storage 方法
             storageRef: ref,
             uploadBytes,
