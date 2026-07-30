@@ -760,7 +760,7 @@
                             清除所選商品的排程
                         </button>
                     </div>
-                    <p class="batch-schedule-hint">先勾選下方要排程的商品，再填時間並套用；系統每 15 分鐘檢查一次，時間到了會自動改變商品狀態，不是精準到秒。</p>
+                    <p class="batch-schedule-hint">先勾選下方要排程的商品，再填時間並套用；系統每 3 小時檢查一次並自動更新狀態。</p>
                 </div>
 
                 <div class="table-responsive product-table-container">
@@ -1323,7 +1323,7 @@
                     batch.update(productRef, updateFields);
                 });
                 await batch.commit();
-                alert(`已為 ${selectedIds.length} 項商品套用排程，系統每 15 分鐘檢查一次時間是否到了`);
+                alert(`已為 ${selectedIds.length} 項商品套用排程，系統每 3 小時檢查一次`);
                 loadProducts();
             } catch (error) {
                 console.error('套用排程失敗:', error);
