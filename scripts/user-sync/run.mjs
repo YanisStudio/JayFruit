@@ -1,6 +1,6 @@
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 
 const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
 if (!serviceAccountJson) {
@@ -28,6 +28,25 @@ function detectProvider(userRecord) {
 function normalizedPhone(phoneNumber) {
     if (!phoneNumber) return '';
     return phoneNumber.replace(/^\+886/, '0');
+}
+
+// Authentication 的 creationTime / lastSignInTime 是權威時間來源，
+// 不會受網站前端的寫入競爭（例如 profile.html 跟 member.js 同時寫 Firestore）影響
+function getAuthTimes(userRecord) {
+    const creationTime = userRecord.metadata?.creationTime
+        ? Timestamp.fromDate(new Date(userRecord.metadata.creationTime))
+        : Timestamp.now();
+    const lastSignInTime = userRecord.metadata?.lastSignInTime
+        ? Timestamp.fromDate(new Date(userRecord.metadata.lastSignInTime))
+        : creationTime;
+    return { creationTime, lastSignInTime };
+}
+
+function toMillis(value) {
+    if (!value) return null;
+    if (typeof value.toMillis === 'function') return value.toMillis();
+    const parsed = new Date(value);
+    return isNaN(parsed.getTime()) ? null : parsed.getTime();
 }
 
 async function listAllAuthUsers() {
@@ -59,14 +78,15 @@ async function main() {
         const name = userRecord.displayName || '';
 
         if (!userSnap.exists) {
+            const { creationTime, lastSignInTime } = getAuthTimes(userRecord);
             await userRef.set({
                 email,
                 phone,
                 name,
                 photoURL: userRecord.photoURL || '',
                 provider: detectProvider(userRecord),
-                createdAt: FieldValue.serverTimestamp(),
-                lastLoginAt: FieldValue.serverTimestamp(),
+                createdAt: creationTime,
+                lastLoginAt: lastSignInTime,
                 city: '',
                 district: '',
                 address: ''
@@ -82,10 +102,27 @@ async function main() {
         if (!data.phone && phone) patch.phone = phone;
         if (!data.name && name) patch.name = name;
 
+        // 註冊時間比最後登入時間還晚，邏輯上不可能發生
+        // （通常是 profile.html 跟 member.js 同時搶寫 Firestore 造成的），
+        // 用 Authentication 的權威時間校正回去
+        const createdMs = toMillis(data.createdAt);
+        const lastLoginMs = toMillis(data.lastLoginAt);
+        let timeFixed = false;
+        if (createdMs !== null && lastLoginMs !== null && createdMs > lastLoginMs) {
+            const { creationTime, lastSignInTime } = getAuthTimes(userRecord);
+            patch.createdAt = creationTime;
+            patch.lastLoginAt = lastSignInTime;
+            timeFixed = true;
+        }
+
         if (Object.keys(patch).length > 0) {
             await userRef.update(patch);
             backfilled++;
-            console.log(`補齊會員資料 ${userRecord.uid}:`, patch);
+            if (timeFixed) {
+                console.log(`修正時間顛倒 ${userRecord.uid}:`, patch);
+            } else {
+                console.log(`補齊會員資料 ${userRecord.uid}:`, patch);
+            }
         }
     }
 
