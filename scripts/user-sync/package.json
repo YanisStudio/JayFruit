@@ -1,0 +1,11 @@
+{
+  "name": "user-sync",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "firebase-admin": "^12.1.0"
+  },
+  "scripts": {
+    "start": "node run.mjs"
+  }
+}
