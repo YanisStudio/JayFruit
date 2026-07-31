@@ -15,7 +15,113 @@
     <link rel="stylesheet" href="../css/admin-common.css">
     <link rel="stylesheet" href="../css/order-panel.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    
+
+    <style>
+        /* 匯出設定彈窗（Excel／黑貓宅急便）：內容比一般刪除確認彈窗多很多，
+           不沿用 .confirm-dialog 給刪除確認用的紅色警示標頭跟 450px 窄版寬度，
+           改成這兩個彈窗專屬的樣式，只鎖定各自的 id 底下，不影響其他頁面共用的確認彈窗 */
+        #excel-export-modal .confirm-dialog-content,
+        #blackcat-export-modal .confirm-dialog-content {
+            max-width: 640px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #excel-export-modal h3,
+        #blackcat-export-modal h3 {
+            background: linear-gradient(135deg, #4caf50, #43a047);
+            flex-shrink: 0;
+        }
+
+        #excel-export-modal #excel-export-form,
+        #blackcat-export-modal #blackcat-export-form {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 24px 30px 0;
+        }
+
+        #excel-export-modal .form-group,
+        #blackcat-export-modal .form-group {
+            background-color: #f9f9f9;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 14px 16px;
+            margin-bottom: 14px;
+        }
+
+        #excel-export-modal .form-group:last-of-type,
+        #blackcat-export-modal .form-group:last-of-type {
+            margin-bottom: 0;
+        }
+
+        #excel-export-modal .form-group > label:first-child,
+        #blackcat-export-modal .form-group > label:first-child {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        #excel-export-modal .radio-group,
+        #excel-export-modal .checkbox-group,
+        #blackcat-export-modal .radio-group,
+        #blackcat-export-modal .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px 16px;
+        }
+
+        #excel-export-modal .radio-group label,
+        #excel-export-modal .checkbox-group label,
+        #blackcat-export-modal .radio-group label,
+        #blackcat-export-modal .checkbox-group label {
+            display: flex;
+            align-items: center;
+            font-weight: normal;
+            margin-bottom: 0;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        #excel-export-modal .radio-group input,
+        #excel-export-modal .checkbox-group input,
+        #blackcat-export-modal .radio-group input,
+        #blackcat-export-modal .checkbox-group input {
+            /* order-panel.css 的 .form-group input 把寬度設成 100%（給文字欄位用的），
+               勾選框/單選鈕繼承到會被撐成整欄寬，這裡要蓋回原本的寬度 */
+            width: auto;
+            flex: 0 0 auto;
+            margin-right: 8px;
+        }
+
+        #excel-export-modal .date-range,
+        #blackcat-export-modal .date-range {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #excel-export-modal .date-range input,
+        #blackcat-export-modal .date-range input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        #excel-export-modal .confirm-dialog-buttons,
+        #blackcat-export-modal .confirm-dialog-buttons {
+            position: sticky;
+            bottom: 0;
+            background: #fff;
+            padding: 16px 0 24px;
+            margin-top: 8px;
+            border-top: 1px solid #eee;
+        }
+    </style>
+
     <!-- 引入 SheetJS 用於 Excel 功能 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
@@ -190,9 +296,9 @@
     
     <!-- 黑貓宅急便匯出設定彈窗 -->
     <div class="confirm-dialog" id="blackcat-export-modal">
-        <div class="confirm-dialog-content" style="max-width: 600px;">
+        <div class="confirm-dialog-content">
             <h3>🚛 黑貓宅急便格式匯出設定</h3>
-            <form id="blackcat-export-form" style="padding: 20px;">
+            <form id="blackcat-export-form">
                 <div class="form-group">
                     <label>預設寄件人資訊設定:</label>
                     <div class="sender-info">
@@ -256,7 +362,7 @@
     <div class="confirm-dialog" id="excel-export-modal">
         <div class="confirm-dialog-content">
             <h3>📊 匯出詳細報表設定</h3>
-            <form id="excel-export-form" style="padding: 20px;">
+            <form id="excel-export-form">
                 <div class="form-group">
                     <label>匯出範圍:</label>
                     <div class="radio-group">
