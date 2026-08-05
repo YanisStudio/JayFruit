@@ -202,6 +202,7 @@
                     <li><a href="users.html">會員管理</a></li>
                     <li><a href="messages.html">訊息管理</a></li>
                     <li><a href="shipping.html">運費設定</a></li>
+                    <li><a href="bulletin.html">布告欄管理</a></li>
                 </ul>
             </nav>
             
@@ -266,7 +267,7 @@
                             <select id="status-filter" style="width: 150px; height: 40px; font-size: 15px; padding: 5px;">
                                 <option value="all">全部訂單</option>
                                 <option value="pending">待處理</option>
-                                <option value="confirmed">已確認</option>
+                                <option value="confirmed">待出貨</option>
                                 <option value="shipped">已出貨</option>
                                 <option value="completed">已完成</option>
                                 <option value="cancelled">已取消</option>
@@ -326,7 +327,7 @@
                 <div class="form-group">
                     <label>匯出範圍:</label>
                     <div class="radio-group">
-                        <label><input type="radio" name="export-range" value="confirmed" checked> 僅已確認訂單</label>
+                        <label><input type="radio" name="export-range" value="confirmed" checked> 僅待出貨訂單</label>
                         <label><input type="radio" name="export-range" value="shipped"> 僅已出貨訂單</label>
                         <label><input type="radio" name="export-range" value="all"> 全部訂單</label>
                     </div>
@@ -367,7 +368,7 @@
                     <label>匯出範圍:</label>
                     <div class="radio-group">
                         <label><input type="radio" name="excel-export-range" value="all" checked> 全部訂單</label>
-                        <label><input type="radio" name="excel-export-range" value="confirmed"> 僅已確認訂單</label>
+                        <label><input type="radio" name="excel-export-range" value="confirmed"> 僅待出貨訂單</label>
                         <label><input type="radio" name="excel-export-range" value="shipped"> 僅已出貨訂單</label>
                         <label><input type="radio" name="excel-export-range" value="completed"> 僅已完成訂單</label>
                     </div>

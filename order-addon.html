@@ -1222,7 +1222,7 @@
         }
 
         function canAddToOrder(status) {
-            // 只有待處理和已確認的訂單可以加購
+            // 只有待處理和待出貨的訂單可以加購
             return ['pending', 'confirmed'].includes(status);
         }
 
@@ -1283,7 +1283,7 @@
         function getOrderStatusText(status) {
             const statusMap = {
                 'pending': '待處理',
-                'confirmed': '已確認',
+                'confirmed': '待出貨',
                 'shipped': '已出貨',
                 'completed': '已完成',
                 'cancelled': '已取消'

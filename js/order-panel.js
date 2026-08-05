@@ -191,10 +191,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 const today = new Date().toISOString().split('T')[0];
                 const formattedDeliveryDate = deliveryDate || today;
-                
+
+                // 匯出後要自動標示為「待出貨」的訂單 id（已出貨/已完成/已取消的訂單不動，避免被誤降回待出貨）
+                const orderIdsToMarkAwaitingShipment = [];
+
                 querySnapshot.forEach((doc) => {
                     const orderData = doc.data();
-                    
+
+                    if (!['shipped', 'completed', 'cancelled'].includes(orderData.status)) {
+                        orderIdsToMarkAwaitingShipment.push(doc.id);
+                    }
+
                     // 建立商品描述字串 (商品名稱X數量)
                     let productDescription = '';
                     if (orderData.items && orderData.items.length > 0) {
@@ -285,10 +292,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 const fileName = `杰の御果園_黑貓宅急便_${today}.xlsx`;
                 XLSX.writeFile(workbook, fileName);
-                
-                window.AdminCommon.showToast('黑貓宅急便格式已成功生成並下載！', 'success');
+
+                // 匯出成功後，把這批訂單自動標示為「待出貨」（已出貨/已完成/已取消的訂單不受影響）
+                if (orderIdsToMarkAwaitingShipment.length > 0) {
+                    const batch = window.firebaseServices.writeBatch(window.firebaseServices.db);
+                    orderIdsToMarkAwaitingShipment.forEach(orderId => {
+                        const orderRef = window.firebaseServices.doc(window.firebaseServices.db, 'orders', orderId);
+                        batch.update(orderRef, { status: 'confirmed' });
+                    });
+                    await batch.commit();
+                }
+
+                window.AdminCommon.showToast('黑貓宅急便格式已成功生成並下載，訂單已標示為待出貨！', 'success');
                 blackcatExportModal.classList.remove('active');
-                
+                loadOrders();
+
             } catch (error) {
                 console.error('生成黑貓宅急便格式時出錯:', error);
                 window.AdminCommon.showToast('生成黑貓宅急便格式時出錯，請稍後再試', 'error');
@@ -418,7 +436,7 @@ document.addEventListener('DOMContentLoaded', function() {
         function getStatusText(status) {
             const statusMap = {
                 'pending': '待處理',
-                'confirmed': '已確認',
+                'confirmed': '待出貨',
                 'shipped': '已出貨',
                 'completed': '已完成',
                 'cancelled': '已取消'
@@ -504,7 +522,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     break;
                                 case 'confirmed':
                                     statusClass = 'confirmed';
-                                    statusText = '已確認';
+                                    statusText = '待出貨';
                                     break;
                                 case 'shipped':
                                     statusClass = 'shipped';
@@ -661,7 +679,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         
                         const statusOptions = [
                             { value: 'pending', text: '待處理' },
-                            { value: 'confirmed', text: '已確認' },
+                            { value: 'confirmed', text: '待出貨' },
                             { value: 'shipped', text: '已出貨' },
                             { value: 'completed', text: '已完成' },
                             { value: 'cancelled', text: '已取消' }
@@ -802,7 +820,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             let statusText = '';
                             switch(newStatus) {
                                 case 'pending': statusText = '待處理'; break;
-                                case 'confirmed': statusText = '已確認'; break;
+                                case 'confirmed': statusText = '待出貨'; break;
                                 case 'shipped': statusText = '已出貨'; break;
                                 case 'completed': statusText = '已完成'; break;
                                 case 'cancelled': statusText = '已取消'; break;

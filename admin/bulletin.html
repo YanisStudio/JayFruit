@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/png" sizes="32x32" href="../images/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="../images/favicon-16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="../images/apple-touch-icon.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>布告欄管理 - 杰の御果園</title>
+    <meta name="description" content="杰の御果園提供台灣高山優質水果，新鮮直送到府。精選梨子、水蜜桃、蘋果及各式水果禮盒，品質保證。">
+    <meta name="keywords" content="台灣水果,高山水果,新鮮水果,水果禮盒,梨子,水蜜桃,蘋果,杰の御果園,果園直送,有機水果">
+    <meta name="author" content="杰の御果園">
+
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/admin-common.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+    <style>
+        .bulletin-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        .bulletin-container .settings-card {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+
+        .bulletin-container .card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 20px 24px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .bulletin-container .card-header i {
+            color: #4caf50;
+            font-size: 20px;
+        }
+
+        .bulletin-container .card-header h2 {
+            margin: 0;
+            font-size: 18px;
+        }
+
+        .bulletin-container .card-body {
+            padding: 24px;
+        }
+
+        .bulletin-container .form-group {
+            margin-bottom: 20px;
+        }
+
+        .bulletin-container .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .bulletin-container textarea#bulletin-text {
+            width: 100%;
+            min-height: 140px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 15px;
+            font-family: inherit;
+            resize: vertical;
+        }
+
+        .bulletin-container .bulletin-image-preview {
+            margin-top: 12px;
+            max-width: 320px;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            overflow: hidden;
+            display: none;
+        }
+
+        .bulletin-container .bulletin-image-preview img {
+            width: 100%;
+            display: block;
+        }
+
+        .bulletin-container .bulletin-image-actions {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .bulletin-container .bulletin-hint {
+            font-size: 13px;
+            color: #888;
+            margin-top: 6px;
+        }
+
+        #remove-bulletin-image {
+            padding: 6px 14px;
+            font-size: 13px;
+        }
+    </style>
+
+    <!-- 引入 Firebase SDK -->
+    <script src="../js/firebase-config.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import {
+            getAuth,
+            onAuthStateChanged
+        } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+        import {
+            getFirestore,
+            doc,
+            getDoc,
+            setDoc,
+            deleteField,
+            serverTimestamp
+        } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+        import {
+            getStorage,
+            ref,
+            uploadBytes
+        } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js";
+
+        const firebaseConfig = window.FIREBASE_CONFIG;
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+
+        window.firebaseServices = {
+            auth: auth,
+            db: db,
+            storage: storage,
+            getAuth,
+            onAuthStateChanged,
+            doc,
+            getDoc,
+            setDoc,
+            deleteField,
+            serverTimestamp,
+            storageRef: ref,
+            uploadBytes
+        };
+    </script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <button class="menu-toggle" id="menu-toggle">
+                <i class="fas fa-bars"></i>
+            </button>
+
+            <a href="../index.html" class="logo-container">
+                <img src="../images/logo.jpg" alt="杰の御果園 logo" width="492" height="649" class="logo-image">
+                <div class="logo">
+                    <h1>杰の御果園</h1>
+                    <p>管理系統</p>
+                </div>
+            </a>
+
+            <nav id="main-nav">
+                <ul>
+                    <li><a href="../index.html">返回網站</a></li>
+                    <li><a href="dashboard.html">管理首頁</a></li>
+                    <li><a href="orders.html">訂單管理</a></li>
+                    <li><a href="products.html">商品管理</a></li>
+                    <li><a href="users.html">會員管理</a></li>
+                    <li><a href="messages.html">訊息管理</a></li>
+                    <li><a href="shipping.html">運費設定</a></li>
+                    <li><a href="bulletin.html" class="active">布告欄管理</a></li>
+                </ul>
+            </nav>
+
+            <div class="header-right">
+                <div class="user-profile" id="user-profile">
+                    <div class="user-name" id="user-dropdown-btn">
+                        <i class="fas fa-user-circle"></i>
+                        <span id="username-display">管理員</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="user-menu" id="user-menu">
+                        <a href="../index.html"><i class="fas fa-home"></i> 返回網站</a>
+                        <a href="#" id="logout-btn"><i class="fas fa-sign-out-alt"></i> 登出</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="menu-overlay" id="menu-overlay"></div>
+
+    <main>
+        <div class="bulletin-container">
+            <h1 class="admin-title">布告欄管理</h1>
+
+            <div class="settings-card">
+                <div class="card-header">
+                    <i class="fas fa-bullhorn"></i>
+                    <h2>首頁公告內容</h2>
+                </div>
+
+                <div class="card-body">
+                    <form id="bulletin-form">
+                        <div class="form-group">
+                            <label for="bulletin-text">公告文字</label>
+                            <textarea id="bulletin-text" placeholder="例如：中秋節出貨公告、休園通知等..."></textarea>
+                            <p class="bulletin-hint">會顯示在首頁「精選新鮮水果」原本的位置，文字跟圖片都是選填，但至少要填一項</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="bulletin-image">公告圖片（選填，最多一張）</label>
+                            <input type="file" id="bulletin-image" accept="image/*">
+                            <div class="bulletin-image-preview" id="bulletin-image-preview">
+                                <img id="bulletin-preview-img" src="" alt="公告圖片預覽">
+                            </div>
+                            <div class="bulletin-image-actions">
+                                <button type="button" class="btn btn-outline" id="remove-bulletin-image" style="display: none;">
+                                    <i class="fas fa-times"></i> 移除圖片
+                                </button>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" id="save-bulletin-btn">
+                            <i class="fas fa-save"></i> 儲存公告
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content admin-footer">
+                <p>&copy; 2025 杰の御果園管理系統。僅限授權人員使用。</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="../js/member.js"></script>
+    <script src="../js/admin-common.js"></script>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        let currentImageUrl = '';
+        let removeImageFlag = false;
+
+        const waitForAdminCommon = function() {
+            if (window.AdminCommon) {
+                checkAdminAccess();
+            } else {
+                setTimeout(waitForAdminCommon, 100);
+            }
+        };
+
+        const checkAdminAccess = function() {
+            window.AdminCommon.checkAdminAccess(
+                function(user) {
+                    const usernameDisplay = document.getElementById('username-display');
+                    if (usernameDisplay) {
+                        usernameDisplay.textContent = '管理員';
+                    }
+
+                    loadBulletin();
+                    bindEvents();
+                },
+                function(error) {
+                    setTimeout(() => {
+                        window.location.href = '../index.html';
+                    }, 2000);
+                }
+            );
+        };
+
+        const bindEvents = function() {
+            const form = document.getElementById('bulletin-form');
+            if (form) {
+                form.addEventListener('submit', saveBulletin);
+            }
+
+            const imageInput = document.getElementById('bulletin-image');
+            if (imageInput) {
+                imageInput.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        removeImageFlag = false;
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            showImagePreview(event.target.result);
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+            }
+
+            const removeBtn = document.getElementById('remove-bulletin-image');
+            if (removeBtn) {
+                removeBtn.addEventListener('click', function() {
+                    removeImageFlag = true;
+                    currentImageUrl = '';
+                    document.getElementById('bulletin-image').value = '';
+                    hideImagePreview();
+                });
+            }
+        };
+
+        const showImagePreview = function(src) {
+            const preview = document.getElementById('bulletin-image-preview');
+            const previewImg = document.getElementById('bulletin-preview-img');
+            const removeBtn = document.getElementById('remove-bulletin-image');
+            previewImg.src = src;
+            preview.style.display = 'block';
+            removeBtn.style.display = 'inline-flex';
+        };
+
+        const hideImagePreview = function() {
+            const preview = document.getElementById('bulletin-image-preview');
+            const removeBtn = document.getElementById('remove-bulletin-image');
+            preview.style.display = 'none';
+            removeBtn.style.display = 'none';
+        };
+
+        const loadBulletin = async function() {
+            try {
+                const db = window.firebaseServices.db;
+                const doc = window.firebaseServices.doc;
+                const getDoc = window.firebaseServices.getDoc;
+
+                const bulletinRef = doc(db, 'settings', 'bulletin');
+                const bulletinSnap = await getDoc(bulletinRef);
+
+                if (bulletinSnap.exists()) {
+                    const data = bulletinSnap.data();
+                    document.getElementById('bulletin-text').value = data.text || '';
+                    if (data.imageUrl) {
+                        currentImageUrl = data.imageUrl;
+                        showImagePreview(data.imageUrl);
+                    }
+                }
+            } catch (error) {
+                window.AdminCommon.handleError(error, '載入布告欄內容');
+            }
+        };
+
+        const saveBulletin = async function(e) {
+            e.preventDefault();
+
+            const user = window.firebaseServices.auth.currentUser;
+            if (!user) {
+                window.AdminCommon.showToast('您必須登入才能儲存布告欄', 'warning');
+                return;
+            }
+
+            const text = document.getElementById('bulletin-text').value.trim();
+            const imageFile = document.getElementById('bulletin-image').files[0];
+
+            if (!text && !imageFile && !currentImageUrl) {
+                window.AdminCommon.showToast('請至少填寫文字或選擇一張圖片', 'warning');
+                return;
+            }
+
+            window.AdminCommon.showLoading('儲存公告中...');
+
+            try {
+                const db = window.firebaseServices.db;
+                const { doc, setDoc, deleteField, serverTimestamp, storage, storageRef, uploadBytes } = window.firebaseServices;
+
+                let imageUrl = removeImageFlag ? '' : currentImageUrl;
+
+                if (imageFile) {
+                    const timestamp = Date.now();
+                    const imagePath = `bulletin/${timestamp}_${imageFile.name}`;
+                    const imageRef = storageRef(storage, imagePath);
+                    await uploadBytes(imageRef, imageFile);
+
+                    const bucketName = "jayfruit-9dfab.firebasestorage.app";
+                    const encodedPath = encodeURIComponent(imagePath);
+                    imageUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedPath}?alt=media`;
+                }
+
+                await setDoc(doc(db, 'settings', 'bulletin'), {
+                    text,
+                    imageUrl: imageUrl || deleteField(),
+                    updatedAt: serverTimestamp()
+                }, { merge: true });
+
+                currentImageUrl = imageUrl;
+                removeImageFlag = false;
+                window.AdminCommon.showToast('公告已儲存', 'success');
+
+            } catch (error) {
+                window.AdminCommon.handleError(error, '儲存布告欄');
+            } finally {
+                window.AdminCommon.hideLoading();
+            }
+        };
+
+        waitForAdminCommon();
+    });
+    </script>
+</body>
+</html>

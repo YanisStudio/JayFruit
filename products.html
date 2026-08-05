@@ -26,6 +26,79 @@
     <link rel="stylesheet" href="css/auth-modals.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
+    <style>
+    /* 分類按鈕（取代原本的分類/價格/排序下拉選單，簡化操作） */
+    .category-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+
+    .category-pill {
+        padding: 8px 20px;
+        border: 1px solid #ddd;
+        border-radius: 999px;
+        background: #fff;
+        color: #555;
+        font-size: 15px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .category-pill:hover {
+        border-color: #4caf50;
+        color: #4caf50;
+    }
+
+    .category-pill.active {
+        background: #4caf50;
+        border-color: #4caf50;
+        color: #fff;
+    }
+
+    /* 已下架商品：仍顯示但不可點選，並排到列表最後面 */
+    .product-card.unavailable {
+        opacity: 0.55;
+    }
+
+    .product-card.unavailable .product-image img {
+        filter: grayscale(70%);
+    }
+
+    .product-card .unavailable-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(0, 0, 0, 0.75);
+        color: #fff;
+        padding: 4px 10px;
+        border-radius: 4px;
+        font-size: 12px;
+        z-index: 2;
+    }
+
+    /* 水蜜桃內傷提醒 */
+    .peach-warning {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 8px;
+        padding: 6px 10px;
+        background: #fff8e1;
+        border: 1px solid #ffe082;
+        border-radius: 4px;
+        font-size: 12px;
+        color: #8d6e00;
+        line-height: 1.4;
+    }
+
+    .peach-warning i {
+        color: #f9a825;
+        flex-shrink: 0;
+    }
+    </style>
+
     <!-- Firebase SDK引入 -->
     <script src="js/firebase-config.js"></script>
     <script type="module">
@@ -222,43 +295,15 @@
         <!-- 商品篩選區域 -->
         <section class="product-filters">
             <div class="container">
-                <div class="filter-container">
-                    <div class="filter-group">
-                        <label>分類：</label>
-                        <select id="category-filter">
-                            <option value="all">所有水果</option>
-                            <option value="pear">梨子</option>
-                            <option value="persimmon">柿子</option>
-                            <option value="peach">水蜜桃</option>
-                            <option value="apple">蘋果</option>
-                            <option value="gift">禮盒</option>
-                        </select>
-                    </div>
-                    
-                    <div class="filter-group">
-                        <label>價格範圍：</label>
-                        <select id="price-filter">
-                            <option value="all">所有價格</option>
-                            <option value="0-100">$100 以下</option>
-                            <option value="100-300">$100 - $300</option>
-                            <option value="300-500">$300 - $500</option>
-                            <option value="500+">$500 以上</option>
-                        </select>
-                    </div>
-                    
-                    <div class="filter-group">
-                        <label>排序：</label>
-                        <select id="sort-filter">
-                            <option value="default">預設排序</option>
-                            <option value="price-low">價格由低至高</option>
-                            <option value="price-high">價格由高至低</option>
-                            <option value="name">名稱</option>
-                        </select>
-                    </div>
-                    
-                    <button id="filter-button" class="btn btn-primary">套用篩選</button>
+                <div class="category-pills" id="category-pills">
+                    <button type="button" class="category-pill active" data-category="all">所有水果</button>
+                    <button type="button" class="category-pill" data-category="pear">梨子</button>
+                    <button type="button" class="category-pill" data-category="persimmon">柿子</button>
+                    <button type="button" class="category-pill" data-category="peach">水蜜桃</button>
+                    <button type="button" class="category-pill" data-category="apple">蘋果</button>
+                    <button type="button" class="category-pill" data-category="gift">禮盒</button>
                 </div>
-                
+
                 <div class="search-container">
                     <input type="text" id="product-search" placeholder="搜尋產品...">
                     <button id="search-button"><i class="fas fa-search"></i></button>
@@ -351,8 +396,6 @@
 let currentProducts = [];
 let currentFilters = {
     category: 'all',
-    price: 'all',
-    sort: 'default',
     search: ''
 };
 
@@ -391,34 +434,41 @@ function autoScrollToProducts() {
     }
 }
 
-// 從 Firebase 載入產品（使用 common.js 的 FirebaseUtils）
+// 從 Firebase 載入產品（含已下架商品，讓已下架商品仍會顯示、只是不能購買）
 async function loadProducts() {
     try {
         const productGrid = document.getElementById('page-1');
         productGrid.innerHTML = '<div class="loading-indicator">載入產品中...</div>';
-        
-        // 使用 common.js 的 FirebaseUtils 載入產品
-        const products = await FirebaseUtils.loadProducts();
-        
+
+        // 使用 common.js 的 FirebaseUtils 載入產品，includeInactive 讓已下架商品也一併載入
+        const products = await FirebaseUtils.loadProducts(null, { includeInactive: true });
+
         if (products.length === 0) {
             productGrid.innerHTML = '<div class="no-products">目前沒有可用的產品</div>';
             updatePaginationButtons(0);
             return;
         }
-        
+
         currentProducts = products;
         console.log(`成功載入 ${products.length} 個產品`);
-        
-        renderProducts(products);
+
+        renderProducts(sortByAvailability(products));
         initAddToCartButtons(); // 使用 common.js 的函數
         initWishlistButtons();
         updateWishlistButtons();
-        
+
     } catch (error) {
         console.error("載入產品失敗:", error);
         const productGrid = document.getElementById('page-1');
         productGrid.innerHTML = `<div class="error-message">載入產品時出錯：${error.message}</div>`;
     }
+}
+
+// 上架商品排前面，已下架商品排到最後面
+function sortByAvailability(products) {
+    const active = products.filter(p => p.status === 'active');
+    const inactive = products.filter(p => p.status !== 'active');
+    return [...active, ...inactive];
 }
 
 // 渲染產品到頁面
@@ -445,12 +495,19 @@ function renderProductsToPage(products, pageNumber) {
     let productsHTML = '';
     
     products.forEach(product => {
+        const isAvailable = product.status === 'active';
         const tagHTML = product.tags?.length > 0 ? `<span class="product-tag">${product.tags[0]}</span>` : '';
         const stockText = product.stock > 0 ? `(庫存: ${product.stock} 件)` : '(無庫存)';
         const stockClass = product.stock < 5 ? 'low-stock' : '';
-        
+        const cardClass = isAvailable ? 'product-card' : 'product-card unavailable';
+        const unavailableBadge = isAvailable ? '' : '<span class="unavailable-badge">已下架</span>';
+        const disabledAttr = (!isAvailable || product.stock <= 0) ? 'disabled' : '';
+        const peachWarningHTML = product.category === 'peach'
+            ? '<div class="peach-warning"><i class="fas fa-triangle-exclamation"></i> 水蜜桃果肉較軟，較容易有內傷，如有發現我們會依政策退款</div>'
+            : '';
+
         productsHTML += `
-            <div class="product-card"
+            <div class="${cardClass}"
                 data-product-id="${product.id}"
                 data-product-name="${window.escapeHtml(product.name)}"
                 data-product-price="${product.price}"
@@ -458,6 +515,7 @@ function renderProductsToPage(products, pageNumber) {
                 data-category="${product.category}">
                 <div class="product-image">
                     ${tagHTML}
+                    ${unavailableBadge}
                     <img src="${product.imageUrl || 'images/placeholder.jpg'}" alt="${window.escapeHtml(product.name)}" onerror="this.onerror=null; this.src='images/placeholder.jpg';">
                 </div>
                 <div class="product-info">
@@ -465,86 +523,52 @@ function renderProductsToPage(products, pageNumber) {
                         <h3>${window.escapeHtml(product.name)}</h3>
                         <p class="product-desc">${window.escapeHtml(product.description)}</p>
                         <p class="product-price">$${product.price}/${product.unit}</p>
-                        <p class="stock-info ${stockClass}">${stockText}</p>
+                        <p class="stock-info ${stockClass}">${isAvailable ? stockText : '已下架'}</p>
+                        ${peachWarningHTML}
                     </div>
                     <div class="product-actions">
-                        <button class="add-to-cart-btn" ${product.stock <= 0 ? 'disabled' : ''}>加入購物車</button>
-                        <button class="wish-btn"><i class="far fa-heart"></i></button>
+                        <button class="add-to-cart-btn" ${disabledAttr}>加入購物車</button>
+                        <button class="wish-btn" ${isAvailable ? '' : 'disabled'}><i class="far fa-heart"></i></button>
                     </div>
                 </div>
             </div>
         `;
     });
-    
+
     productGrid.innerHTML = productsHTML;
 }
 
-// 初始化篩選功能
+// 初始化篩選功能（分類按鈕，點擊立即套用篩選）
 function initFilters() {
-    const filterButton = document.getElementById('filter-button');
-    if (filterButton) {
-        filterButton.addEventListener('click', applyFilters);
-    }
+    const pillButtons = document.querySelectorAll('.category-pill');
+    pillButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            pillButtons.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            currentFilters.category = this.dataset.category;
+            applyFilters();
+        });
+    });
 }
 
 // 應用篩選條件
 function applyFilters() {
-    currentFilters.category = document.getElementById('category-filter').value;
-    currentFilters.price = document.getElementById('price-filter').value;
-    currentFilters.sort = document.getElementById('sort-filter').value;
-    
     let filteredProducts = [...currentProducts];
-    
+
     // 分類篩選
     if (currentFilters.category !== 'all') {
         filteredProducts = filteredProducts.filter(p => p.category === currentFilters.category);
     }
-    
-    // 價格篩選
-    if (currentFilters.price !== 'all') {
-        filteredProducts = filterByPrice(filteredProducts, currentFilters.price);
-    }
-    
-    // 排序
-    filteredProducts = sortProducts(filteredProducts, currentFilters.sort);
-    
+
+    filteredProducts = sortByAvailability(filteredProducts);
+
     // 更新標題
     updateSectionTitle();
-    
+
     renderProducts(filteredProducts);
     initAddToCartButtons();
     initWishlistButtons();
     updateWishlistButtons();
-}
-
-// 價格篩選
-function filterByPrice(products, priceRange) {
-    if (priceRange.includes('-')) {
-        const parts = priceRange.split('-');
-        const minPrice = parseFloat(parts[0]);
-        
-        if (parts[1] === '+') {
-            return products.filter(p => p.price >= minPrice);
-        } else {
-            const maxPrice = parseFloat(parts[1]);
-            return products.filter(p => p.price >= minPrice && p.price <= maxPrice);
-        }
-    }
-    return products;
-}
-
-// 產品排序
-function sortProducts(products, sortType) {
-    switch(sortType) {
-        case 'price-low':
-            return products.sort((a, b) => a.price - b.price);
-        case 'price-high':
-            return products.sort((a, b) => b.price - a.price);
-        case 'name':
-            return products.sort((a, b) => a.name.localeCompare(b.name, 'zh-TW'));
-        default:
-            return products;
-    }
 }
 
 // 更新區段標題
@@ -585,27 +609,30 @@ function initSearch() {
 function performSearch(searchTerm) {
     searchTerm = searchTerm.trim().toLowerCase();
     currentFilters.search = searchTerm;
-    
+
     if (!searchTerm) {
         // 重置篩選器
-        document.getElementById('category-filter').value = 'all';
-        document.getElementById('price-filter').value = 'all';
-        document.getElementById('sort-filter').value = 'default';
-        currentFilters = { category: 'all', price: 'all', sort: 'default', search: '' };
-        renderProducts(currentProducts);
+        document.querySelectorAll('.category-pill').forEach(b => b.classList.remove('active'));
+        const allPill = document.querySelector('.category-pill[data-category="all"]');
+        if (allPill) allPill.classList.add('active');
+        currentFilters = { category: 'all', search: '' };
+        renderProducts(sortByAvailability(currentProducts));
         updateSectionTitle();
+        initAddToCartButtons();
+        initWishlistButtons();
+        updateWishlistButtons();
         return;
     }
-    
+
     // 搜尋產品
     const searchResults = currentProducts.filter(product => {
         const productName = product.name.toLowerCase();
         const productDesc = product.description.toLowerCase();
         return productName.includes(searchTerm) || productDesc.includes(searchTerm);
     });
-    
+
     updateSectionTitle();
-    renderProducts(searchResults);
+    renderProducts(sortByAvailability(searchResults));
     initAddToCartButtons();
     initWishlistButtons();
     updateWishlistButtons();

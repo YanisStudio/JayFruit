@@ -23,6 +23,27 @@
     <link rel="stylesheet" href="css/auth-modals.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
+    <style>
+    .cert-info {
+        padding: 1.5rem 0;
+        text-align: center;
+    }
+
+    .cert-badge {
+        display: inline-block;
+        transition: opacity 0.2s ease;
+    }
+
+    .cert-badge:hover {
+        opacity: 0.8;
+    }
+
+    .cert-badge img {
+        max-width: 240px;
+        height: auto;
+    }
+    </style>
+
     <!-- Firebase SDK引入 - 使用模組方式 -->
     <script src="js/firebase-config.js"></script>
     <script type="module">
@@ -242,45 +263,16 @@
             </div>
         </section>
         
-        <section class="core-values">
+        <!-- 農產署認證連結：logo 圖片先用暫定的占位圖，連結先指到 FB 粉絲團，
+             之後有正式的農產署頁面/圖檔時記得換掉 -->
+        <section class="cert-info">
             <div class="container">
-                <h2 class="section-title">我們的核心價值</h2>
-                <div class="values-container">
-                    <div class="value-card">
-                        <div class="value-icon">
-                            <i class="fas fa-seedling"></i>
-                        </div>
-                        <h3>永續農業</h3>
-                        <p>我們致力於推動永續農業，採用友善環境的栽培方式，減少農藥使用，保護生態環境。</p>
-                    </div>
-                    
-                    <div class="value-card">
-                        <div class="value-icon">
-                            <i class="fas fa-award"></i>
-                        </div>
-                        <h3>品質保證</h3>
-                        <p>從種植到採收，再到包裝運送，我們嚴格把關每一個環節，確保水果的品質與新鮮度。</p>
-                    </div>
-                    
-                    <div class="value-card">
-                        <div class="value-icon">
-                            <i class="fas fa-handshake"></i>
-                        </div>
-                        <h3>誠信經營</h3>
-                        <p>誠實、透明是我們的經營理念，我們與農友建立長期合作關係，共同成長。</p>
-                    </div>
-                    
-                    <div class="value-card">
-                        <div class="value-icon">
-                            <i class="fas fa-heart"></i>
-                        </div>
-                        <h3>顧客滿意</h3>
-                        <p>我們以顧客滿意為目標，提供優質的產品與服務，建立長期的信任關係。</p>
-                    </div>
-                </div>
+                <a href="https://www.facebook.com/jay0955688658" target="_blank" rel="noopener" class="cert-badge">
+                    <img src="images/coa-logo-placeholder.png" alt="農產署">
+                </a>
             </div>
         </section>
-        
+
         <section class="farm-showcase about-farms">
             <div class="container">
                 <h2 class="section-title">我們的果園</h2>
@@ -341,40 +333,6 @@
                             <h3>資訊顧問</h3>
                             <p class="member-title">國立台灣科技大學電子工程系碩士 / 網站維護</p>
                             <p class="member-desc">負責杰の御果園網站的開發與維護，提供技術支援與系統優化，確保線上購物平台穩定運作與良好的使用者體驗。</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-        
-        <section class="testimonials about-testimonials">
-            <div class="container">
-                <h2 class="section-title">顧客見證</h2>
-                <div class="testimonial-slider">
-                    <div class="testimonial">
-                        <div class="testimonial-content">
-                            <p>"新世紀梨真的滿好吃的，脆脆的又多汁，小孩本來不太愛吃水果，這次意外搶著吃，之後應該還會再訂。"</p>
-                        </div>
-                        <div class="testimonial-author">
-                            <p>— 林小姐，台北</p>
-                        </div>
-                    </div>
-
-                    <div class="testimonial">
-                        <div class="testimonial-content">
-                            <p>"買來送禮的，包裝滿用心的，朋友收到說很有質感。配送時間也抓得蠻準時，算是滿放心的一次購物經驗。"</p>
-                        </div>
-                        <div class="testimonial-author">
-                            <p>— 張先生，新北</p>
-                        </div>
-                    </div>
-
-                    <div class="testimonial">
-                        <div class="testimonial-content">
-                            <p>"當媽媽的比較在意食品安全，這邊的水果吃起來還蠻安心的，小孩也很捧場，會考慮回購。"</p>
-                        </div>
-                        <div class="testimonial-author">
-                            <p>— 王小姐，桃園</p>
                         </div>
                     </div>
                 </div>

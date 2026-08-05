@@ -34,6 +34,69 @@
         padding: 0.8em 2em;
         margin-top: 1rem;
     }
+
+    /* 布告欄 */
+    .bulletin-board {
+        padding: 3.75em 0;
+    }
+
+    .bulletin-card {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        padding: 2rem;
+        display: flex;
+        gap: 2rem;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .bulletin-card.text-only {
+        justify-content: center;
+    }
+
+    .bulletin-card .bulletin-image {
+        flex: 0 0 280px;
+        max-width: 280px;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .bulletin-card .bulletin-image img {
+        width: 100%;
+        display: block;
+    }
+
+    .bulletin-card .bulletin-text {
+        flex: 1;
+        min-width: 200px;
+        font-size: 1.1rem;
+        line-height: 1.8;
+        color: #444;
+    }
+
+    .bulletin-card.text-only .bulletin-text {
+        text-align: center;
+        flex: none;
+        max-width: 700px;
+    }
+
+    .bulletin-empty {
+        text-align: center;
+        color: #999;
+        padding: 2rem;
+    }
+
+    @media (max-width: 768px) {
+        .bulletin-card {
+            flex-direction: column;
+        }
+
+        .bulletin-card .bulletin-image {
+            max-width: 100%;
+            flex: none;
+        }
+    }
 </style>
 
     <!-- Firebase SDK引入 - 使用模組方式 -->
@@ -234,16 +297,12 @@
             </div>
         </section>
         
-        <!-- 精選產品區域 - 顯示後台選擇的精選商品 -->
-        <section class="featured-products">
+        <!-- 布告欄 - 顯示後台設定的公告 -->
+        <section class="bulletin-board">
             <div class="container">
-                <h2 class="section-title">精選新鮮水果</h2>
-                <div class="product-grid" id="featured-products-grid">
-                    <!-- 精選商品將由JavaScript動態加載 -->
-                    <div class="loading-indicator">載入精選商品中...</div>
-                </div>
-                <div class="view-more">
-                    <a href="products.html" class="btn btn-outline">查看更多商品</a>
+                <h2 class="section-title">最新公告</h2>
+                <div id="bulletin-content">
+                    <div class="loading-indicator">載入中...</div>
                 </div>
             </div>
         </section>
@@ -272,26 +331,6 @@
                         </div>
                         <h3>專業配送</h3>
                         <p>由黑貓宅急便專業配送，確保水果新鮮送達您家</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-        
-        <section class="farm-showcase">
-            <div class="container">
-                <h2 class="section-title">我們的果園</h2>
-                <div class="farm-content">
-                    <div class="farm-image">
-                        <img src="images/farm.jpg" alt="水果園" width="960" height="720">
-                    </div>
-                    <div class="farm-text">
-                        <h3>用心栽培每一顆水果</h3>
-                        <p>我們的果園位於台灣高山地區，擁有最適合水果生長的氣候和土壤。每一棵果樹都經過精心照料，確保水果的品質和風味。從種植、培育到採收，我們堅持天然有機的栽培方式，讓您吃得安心、健康。</p>
-                        <div class="specialty-note">
-                            <p><strong>園主電話：</strong>0937-163-179</p>
-                            <p><strong>果園地址：</strong>台中市和平區中興路</p>
-                        </div>
-                        <a href="about.html" class="btn btn-outline">了解更多</a>
                     </div>
                 </div>
             </div>
@@ -367,203 +406,54 @@
     <script src="js/common.js"></script>
     <script src="js/member.js"></script>
     
-    <!-- 精選商品載入功能 -->
+    <!-- 布告欄載入功能 -->
     <script>
 // 等待DOM完全加載後執行
 document.addEventListener('DOMContentLoaded', function() {
     // 初始化共用功能
     initCommonFeatures();
-    
-    // 加載精選商品
-    loadFeaturedProducts();
+
+    // 加載布告欄公告
+    loadBulletin();
 });
 
-// 從 Firebase 加載精選商品
-async function loadFeaturedProducts() {
+// 從 Firebase 加載布告欄公告（後台「布告欄管理」設定的單一公告）
+async function loadBulletin() {
+    const container = document.getElementById('bulletin-content');
+    if (!container) return;
+
     try {
-        showLoadingProducts();
-        const featuredProducts = await FirebaseUtils.loadFeaturedProducts();
-        
-        if (featuredProducts.length === 0) {
-            showNoProducts();
+        const { db, doc, getDoc } = window.firebaseServices;
+        const bulletinRef = doc(db, 'settings', 'bulletin');
+        const bulletinSnap = await getDoc(bulletinRef);
+
+        if (!bulletinSnap.exists()) {
+            container.innerHTML = '<div class="bulletin-empty">目前沒有最新公告</div>';
             return;
         }
-        
-        console.log(`載入精選商品數量: ${featuredProducts.length}`);
-        renderProducts(featuredProducts);
-        initAddToCartButtons();
-        initWishlistButtons();
-        updateWishlistButtons();
-        
+
+        const data = bulletinSnap.data();
+        const text = (data.text || '').trim();
+        const imageUrl = data.imageUrl || '';
+
+        if (!text && !imageUrl) {
+            container.innerHTML = '<div class="bulletin-empty">目前沒有最新公告</div>';
+            return;
+        }
+
+        const cardClass = imageUrl ? 'bulletin-card' : 'bulletin-card text-only';
+        const imageHTML = imageUrl
+            ? `<div class="bulletin-image"><img src="${imageUrl}" alt="公告圖片" onerror="this.onerror=null; this.src='images/placeholder.jpg';"></div>`
+            : '';
+        const textHTML = text
+            ? `<div class="bulletin-text">${window.escapeHtml(text).replace(/\n/g, '<br>')}</div>`
+            : '';
+
+        container.innerHTML = `<div class="${cardClass}">${imageHTML}${textHTML}</div>`;
+
     } catch (error) {
-        console.error("加載精選商品失敗:", error);
-        showErrorMessage(error.message);
-    }
-}
-
-// 顯示載入狀態
-function showLoadingProducts() {
-    const productGrid = document.getElementById('featured-products-grid');
-    if (productGrid) {
-        productGrid.innerHTML = '<div class="loading-indicator">載入精選商品中...</div>';
-    }
-}
-
-// 顯示無商品狀態
-function showNoProducts() {
-    const productGrid = document.getElementById('featured-products-grid');
-    if (productGrid) {
-        productGrid.innerHTML = '<div class="no-products">目前沒有設定精選商品</div>';
-    }
-}
-
-// 顯示錯誤訊息
-function showErrorMessage(message) {
-    const productGrid = document.getElementById('featured-products-grid');
-    if (productGrid) {
-        productGrid.innerHTML = `
-            <div class="error-message">
-                加載商品時出錯：${message}<br>
-                請嘗試重新整理頁面，或聯繫網站管理員。
-            </div>`;
-    }
-}
-
-// 渲染商品到頁面 - 使用與 products.html 相同的結構
-function renderProducts(products) {
-    const productGrid = document.getElementById('featured-products-grid');
-    if (!productGrid) return;
-    
-    let productsHTML = '';
-    
-    products.forEach(product => {
-        let tagHTML = '';
-        if (product.tags && product.tags.length > 0) {
-            tagHTML = `<span class="product-tag">${product.tags[0]}</span>`;
-        }
-        
-        const stockText = product.stock > 0 ? `(庫存: ${product.stock} 份)` : '(無庫存)';
-        const stockClass = product.stock < 5 ? 'low-stock' : '';
-        
-        // 使用與 products.html 完全相同的結構
-        productsHTML += `
-            <div class="product-card"
-                data-product-id="${product.id}"
-                data-product-name="${window.escapeHtml(product.name)}"
-                data-product-price="${product.price}"
-                data-product-stock="${product.stock}"
-                data-category="${product.category}">
-                <div class="product-image">
-                    ${tagHTML}
-                    <img src="${product.imageUrl || 'images/placeholder.jpg'}" alt="${window.escapeHtml(product.name)}" onerror="this.onerror=null; this.src='images/placeholder.jpg';">
-                </div>
-                <div class="product-info">
-                    <div class="product-content">
-                        <h3>${window.escapeHtml(product.name)}</h3>
-                        <p class="product-desc">${window.escapeHtml(product.description)}</p>
-                        <p class="product-price">$${product.price}/${product.unit}</p>
-                        <p class="stock-info ${stockClass}">${stockText}</p>
-                    </div>
-                    <div class="product-actions">
-                        <button class="add-to-cart-btn" ${product.stock <= 0 ? 'disabled' : ''}>加入購物車</button>
-                        <button class="wish-btn"><i class="far fa-heart"></i></button>
-                    </div>
-                </div>
-            </div>
-        `;
-    });
-    
-    productGrid.innerHTML = productsHTML;
-}
-
-// 初始化收藏功能
-function initWishlistButtons() {
-    const wishButtons = document.querySelectorAll('.wish-btn');
-    wishButtons.forEach(button => {
-        const newButton = button.cloneNode(true);
-        button.parentNode.replaceChild(newButton, button);
-        newButton.addEventListener('click', wishlistButtonClickHandler);
-    });
-}
-
-// 願望清單按鈕點擊處理
-function wishlistButtonClickHandler(event) {
-    event.preventDefault();
-    event.stopPropagation();
-    
-    const button = this;
-    const productCard = button.closest('.product-card');
-    
-    if (productCard) {
-        const productId = productCard.dataset.productId;
-        const productName = productCard.dataset.productName;
-        
-        let wishlist = JSON.parse(localStorage.getItem('wishlist')) || [];
-        const index = wishlist.findIndex(item => item.id === productId);
-        
-        if (index > -1) {
-            wishlist.splice(index, 1);
-            button.classList.remove('active');
-            showToast(`已取消註記 ${productName}`);
-        } else {
-            wishlist.push({
-                id: productId,
-                name: productName,
-                addedAt: new Date().toISOString()
-            });
-            button.classList.add('active');
-            showToast(`已註記 ${productName}`);
-        }
-        
-        localStorage.setItem('wishlist', JSON.stringify(wishlist));
-    }
-}
-
-// 更新願望清單按鈕狀態
-function updateWishlistButtons() {
-    let wishlist = JSON.parse(localStorage.getItem('wishlist')) || [];
-    const wishButtons = document.querySelectorAll('.wish-btn');
-    
-    wishButtons.forEach(btn => {
-        const productCard = btn.closest('.product-card');
-        if (productCard) {
-            const productId = productCard.dataset.productId;
-            const isWishlisted = wishlist.some(item => item.id === productId);
-            
-            if (isWishlisted) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
-        }
-    });
-}
-
-// Toast 通知功能（如果 common.js 沒有的話）
-function showToast(message) {
-    // 如果 common.js 有 showToast 函數就用那個，否則用簡單的 alert
-    if (typeof window.showToast === 'function') {
-        window.showToast(message);
-    } else {
-        // 簡單的 toast 實現
-        const toast = document.createElement('div');
-        toast.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #4CAF50;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 4px;
-            z-index: 10000;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        `;
-        toast.textContent = message;
-        document.body.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.remove();
-        }, 3000);
+        console.error('載入布告欄失敗:', error);
+        container.innerHTML = '<div class="bulletin-empty">目前沒有最新公告</div>';
     }
 }
     </script>

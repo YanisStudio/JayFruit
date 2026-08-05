@@ -520,29 +520,32 @@ function handleWindowResize() {
 const FirebaseUtils = {
     /**
      * 載入商品數據
+     * options.includeInactive：true 時連下架商品也一併載入（給商品列表頁用，
+     * 讓使用者看得到已下架商品但不能購買）；預設 false，維持結帳驗證、
+     * 首頁等其他呼叫端原本「只看得到上架商品」的行為，避免動到那些地方
      */
-    async loadProducts(filterCallback = null) {
+    async loadProducts(filterCallback = null, options = {}) {
         if (!CommonModule.firebase) {
             throw new Error('Firebase 服務未初始化');
         }
-        
+
         const db = CommonModule.firebase.db;
         const collection = CommonModule.firebase.collection;
         const getDocs = CommonModule.firebase.getDocs;
         const query = CommonModule.firebase.query;
         const where = CommonModule.firebase.where;
-        
-        const productsQuery = query(
-            collection(db, "products"),
-            where("status", "==", "active")
-        );
-        
+
+        const includeInactive = options.includeInactive === true;
+        const productsQuery = includeInactive
+            ? collection(db, "products")
+            : query(collection(db, "products"), where("status", "==", "active"));
+
         const productsSnapshot = await getDocs(productsQuery);
-        
+
         if (productsSnapshot.empty) {
             return [];
         }
-        
+
         const products = [];
         productsSnapshot.forEach(doc => {
             const data = doc.data();
@@ -556,15 +559,16 @@ const FirebaseUtils = {
                 imageUrl: data.imageUrl || 'images/placeholder.jpg',
                 tags: Array.isArray(data.tags) ? data.tags : [],
                 stock: data.stock || 0,
+                status: data.status || 'inactive',
                 isFeaturedOffer: data.isFeaturedOffer || false
             };
-            
+
             // 如果有過濾回調函數，則使用它
             if (!filterCallback || filterCallback(product)) {
                 products.push(product);
             }
         });
-        
+
         return products;
     },
     
