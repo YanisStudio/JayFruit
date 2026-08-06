@@ -849,17 +849,15 @@
                                 <p>建議您<a href="#" id="remind-login-btn">登入會員帳戶</a>以便追蹤訂單進度。</p>
                             `;
                             
-                            // 添加提醒登入按鈕事件
-                            setTimeout(() => {
-                                const remindLoginBtn = document.getElementById('remind-login-btn');
-                                if (remindLoginBtn) {
-                                    remindLoginBtn.addEventListener('click', function(e) {
-                                        e.preventDefault();
-                                        const loginBtn = document.getElementById('login-btn');
-                                        if (loginBtn) loginBtn.click();
-                                    });
-                                }
-                            }, 100);
+                            // innerHTML 是同步賦值，remind-login-btn 這時已經在 DOM 上了，不需要延遲
+                            const remindLoginBtn = document.getElementById('remind-login-btn');
+                            if (remindLoginBtn) {
+                                remindLoginBtn.addEventListener('click', function(e) {
+                                    e.preventDefault();
+                                    const loginBtn = document.getElementById('login-btn');
+                                    if (loginBtn) loginBtn.click();
+                                });
+                            }
                         }
                     });
                 } else {
@@ -1108,8 +1106,8 @@
                 transferDateInput.max = today; // 不允許選擇未來日期
             }
             
-            // 延遲初始化匯款提醒功能，確保所有元素都已載入
-            setTimeout(initPaymentReminder, 500);
+            // DOMContentLoaded 已保證所有元素都已載入，不需要再延遲
+            initPaymentReminder();
         });
     </script>
 </body>

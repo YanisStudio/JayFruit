@@ -679,14 +679,11 @@
             
             // 初始加載檢查
             function initialLoadCheck() {
-                // 如果購物車為空，快速完成加載
+                // 如果購物車為空，直接顯示空購物車狀態，不用刻意延遲
                 if (cart.length === 0) {
-                    // 延遲一點時間讓用戶看到加載效果
-                    setTimeout(() => {
-                        if (emptyCart) emptyCart.style.display = 'flex';
-                        if (cartSummary) cartSummary.style.display = 'none';
-                        finishLoading();
-                    }, 800);
+                    if (emptyCart) emptyCart.style.display = 'flex';
+                    if (cartSummary) cartSummary.style.display = 'none';
+                    finishLoading();
                     return false;
                 }
                 
@@ -714,24 +711,26 @@ async function loadShippingSettings() {
         const getDoc = window.firebaseServices.getDoc;
         const collection = window.firebaseServices.collection;
         const getDocs = window.firebaseServices.getDocs;
-        
+
+        // 這 4 筆讀取互相獨立，平行送出比一個一個 await 快
+        const [freeShippingSnap, calculationModeSnap, fixedRatesSnap, tieredSnap] = await Promise.all([
+            getDoc(doc(db, 'shippingSettings', 'freeShipping')),
+            getDoc(doc(db, 'shippingSettings', 'calculationMode')),
+            getDoc(doc(db, 'shippingRates', 'fixedRates')),
+            getDocs(collection(db, 'tieredRates'))
+        ]);
+
         // 載入免運設定
-        const freeShippingRef = doc(db, 'shippingSettings', 'freeShipping');
-        const freeShippingSnap = await getDoc(freeShippingRef);
         if (freeShippingSnap.exists()) {
             shippingSettings.freeShipping = freeShippingSnap.data();
         }
-        
+
         // 載入計算模式
-        const calculationModeRef = doc(db, 'shippingSettings', 'calculationMode');
-        const calculationModeSnap = await getDoc(calculationModeRef);
         if (calculationModeSnap.exists()) {
             shippingSettings.calculationMode = calculationModeSnap.data().mode || 'fixed';
         }
-        
+
         // 載入固定運費 - 改為載入宅配運費
-        const fixedRatesRef = doc(db, 'shippingRates', 'fixedRates');
-        const fixedRatesSnap = await getDoc(fixedRatesRef);
         if (fixedRatesSnap.exists()) {
             const data = fixedRatesSnap.data();
             // 使用宅配運費而非超商取貨
@@ -741,14 +740,13 @@ async function loadShippingSettings() {
                 shippingRates.home = data.home || 0;
             }
         }
-        
+
         // 載入階梯運費（宅配）
-        const tieredSnap = await getDocs(collection(db, 'tieredRates'));
         const homeRates = [];
-        tieredSnap.forEach(doc => {
-            const data = doc.data();
+        tieredSnap.forEach(docSnap => {
+            const data = docSnap.data();
             if (data.method === 'home') { // 改為宅配
-                homeRates.push({ id: doc.id, ...data });
+                homeRates.push({ id: docSnap.id, ...data });
             }
         });
         tieredRates = homeRates.sort((a, b) => a.minQuantity - b.minQuantity);
@@ -846,27 +844,35 @@ function calculateShipping(cartItems, subtotal) {
 }
 
 // 從Firebase獲取產品圖片和庫存
+// 只查購物車裡實際有的商品，不要把整個商品目錄都下載下來
+// ——賣場商品一多，購物車頁的載入速度會被拖慢
 async function getProductDetails() {
     try {
         if (!window.firebaseServices) {
             console.error('Firebase 服務未初始化');
             return {};
         }
-        
+
         const db = window.firebaseServices.db;
-        const productsCollection = window.firebaseServices.collection(db, "products");
-        const productsSnapshot = await window.firebaseServices.getDocs(productsCollection);
-        
+        const doc = window.firebaseServices.doc;
+        const getDoc = window.firebaseServices.getDoc;
+
+        const uniqueIds = [...new Set(cart.map(item => item.id))];
+        const snapshots = await Promise.all(
+            uniqueIds.map(id => getDoc(doc(db, 'products', id)))
+        );
+
         const productDetails = {};
-        productsSnapshot.forEach(doc => {
-            const data = doc.data();
-            productDetails[doc.id] = {
+        snapshots.forEach((snap, index) => {
+            if (!snap.exists()) return;
+            const data = snap.data();
+            productDetails[uniqueIds[index]] = {
                 imageUrl: data.imageUrl || 'images/placeholder.jpg',
                 stock: data.stock || 0,
                 category: data.category || 'other'
             };
         });
-        
+
         return productDetails;
     } catch (error) {
         console.error('獲取產品資訊失敗:', error);
@@ -986,12 +992,10 @@ async function renderCart() {
         
         // 添加移除商品功能
         bindRemoveButtons();
-        
-        // 完成加載
-        setTimeout(() => {
-            finishLoading();
-        }, 300);
-        
+
+        // 資料都準備好了，直接結束載入畫面
+        finishLoading();
+
     } catch (error) {
         console.error('渲染購物車時出錯:', error);
         // 即使出錯也要隱藏加載動畫

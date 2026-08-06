@@ -1120,26 +1120,25 @@
                 const collection = window.firebaseServices.collection;
                 const getDocs = window.firebaseServices.getDocs;
 
+                // 這 4 筆讀取互相獨立，平行送出比一個一個 await 快
+                const [freeShippingSnap, calculationModeSnap, fixedRatesSnap, tieredRatesSnap] = await Promise.all([
+                    getDoc(doc(db, 'shippingSettings', 'freeShipping')),
+                    getDoc(doc(db, 'shippingSettings', 'calculationMode')),
+                    getDoc(doc(db, 'shippingRates', 'fixedRates')),
+                    getDocs(collection(db, 'tieredRates'))
+                ]);
+
                 // 載入免運設定
-                const freeShippingRef = doc(db, 'shippingSettings', 'freeShipping');
-                const freeShippingSnap = await getDoc(freeShippingRef);
-                
                 if (freeShippingSnap.exists()) {
                     shippingSettings.freeShipping = freeShippingSnap.data();
                 }
 
                 // 載入計算模式
-                const calculationModeRef = doc(db, 'shippingSettings', 'calculationMode');
-                const calculationModeSnap = await getDoc(calculationModeRef);
-                
                 if (calculationModeSnap.exists()) {
                     shippingSettings.calculationMode = calculationModeSnap.data().mode || 'fixed';
                 }
 
                 // 載入固定運費
-                const fixedRatesRef = doc(db, 'shippingRates', 'fixedRates');
-                const fixedRatesSnap = await getDoc(fixedRatesRef);
-                
                 if (fixedRatesSnap.exists()) {
                     const data = fixedRatesSnap.data();
                     // 處理舊格式兼容性
@@ -1151,7 +1150,6 @@
                 }
 
                 // 載入階梯運費
-                const tieredRatesSnap = await getDocs(collection(db, 'tieredRates'));
                 const homeRates = [];
                 
                 tieredRatesSnap.forEach(docSnap => {
