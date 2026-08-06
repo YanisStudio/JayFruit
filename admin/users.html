@@ -475,13 +475,20 @@
                 const db = window.firebaseServices.db;
                 const collection = window.firebaseServices.collection;
                 const getDocs = window.firebaseServices.getDocs;
-                
-                // 獲取所有訂單以計算消費會員數
-                console.log('正在獲取訂單資料...');
+
+                // 訂單統計和用戶清單互相獨立，平行查詢比依序 await 快
+                console.log('正在獲取訂單與用戶資料...');
+                const [ordersSnapshot, usersSnapshot] = await Promise.all([
+                    getDocs(collection(db, 'orders')).catch(orderError => {
+                        console.warn('載入訂單資料時出錯，將以無訂單狀態繼續:', orderError);
+                        return null;
+                    }),
+                    getDocs(collection(db, 'users'))
+                ]);
+
+                // 統計消費會員數
                 let userOrdersMap = new Map();
-                
-                try {
-                    const ordersSnapshot = await getDocs(collection(db, 'orders'));
+                if (ordersSnapshot) {
                     ordersSnapshot.forEach(doc => {
                         const order = doc.data();
                         if (order.userId) {
@@ -492,13 +499,7 @@
                         }
                     });
                     console.log('訂單統計完成，找到', userOrdersMap.size, '個有訂單的用戶');
-                } catch (orderError) {
-                    console.warn('載入訂單資料時出錯，將以無訂單狀態繼續:', orderError);
                 }
-                
-                // 從 Firestore 獲取用戶數據
-                console.log('正在獲取用戶資料...');
-                const usersSnapshot = await getDocs(collection(db, 'users'));
                 console.log('用戶查詢完成，找到', usersSnapshot.size, '個用戶');
                 
                 if (usersSnapshot.empty) {
