@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let shippingRates = { store: 0, home: 130 };
     let tieredRates = { home: [], store: [] };
     let allProducts = []; // 儲存所有產品資料
+    let twDistrictSelect = null; // 縣市／鄉鎮市區連動下拉選單控制器
     
     // 分類對應 - 更新為水果分類
     const categoryMap = {
@@ -808,8 +809,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     // 填充收件人資料
                     document.getElementById('name').value = userData.name || '';
                     document.getElementById('phone').value = userData.phone || '';
-                    document.getElementById('city').value = userData.city || '';
-                    document.getElementById('district').value = userData.district || '';
+                    if (twDistrictSelect) {
+                        twDistrictSelect.setValue(userData.city || '', userData.district || '');
+                    }
                     document.getElementById('address').value = userData.address || '';
                 } else {
                     // 使用默認值
@@ -1327,7 +1329,12 @@ async function generateShippingOptions() {
     async function initializePage() {
         // 顯示主加載覆蓋層
         showMainLoadingOverlay();
-        
+
+        // 初始化縣市／鄉鎮市區連動下拉選單
+        if (window.initTWDistrictSelect) {
+            twDistrictSelect = window.initTWDistrictSelect('city', 'district');
+        }
+
         try {
             // 顯示訂單摘要計算中
             showSummaryCalculating();
