@@ -317,10 +317,14 @@
                 </div>
                 
                 <!-- 第二頁產品 -->
-                <div class="product-grid" id="page-2" style="display: none;"></div>
-                
+                <div class="product-grid" id="page-2" style="display: none;">
+                    <div class="loading-indicator">載入產品中...</div>
+                </div>
+
                 <!-- 第三頁產品 -->
-                <div class="product-grid" id="page-3" style="display: none;"></div>
+                <div class="product-grid" id="page-3" style="display: none;">
+                    <div class="loading-indicator">載入產品中...</div>
+                </div>
                 
                 <!-- 分頁控制 -->
                 <div class="pagination">
@@ -392,6 +396,10 @@ let currentProducts = [];
 let currentFilters = {
     category: 'all'
 };
+// 產品還在從 Firebase 載入時，第 2、3 頁的格子其實是空的。如果使用者在這時候
+// 點分頁按鈕切過去，會看到一片空白，很容易誤以為「沒有產品」。用這個旗標擋下
+// 載入完成前的分頁點擊
+let productsLoaded = false;
 
 // DOM 載入完成後初始化
 document.addEventListener('DOMContentLoaded', function() {
@@ -439,6 +447,7 @@ async function loadProducts() {
         if (products.length === 0) {
             productGrid.innerHTML = '<div class="no-products">目前沒有可用的產品</div>';
             updatePaginationButtons(0);
+            productsLoaded = true;
             return;
         }
 
@@ -449,6 +458,7 @@ async function loadProducts() {
         initAddToCartButtons(); // 使用 common.js 的函數
         initWishlistButtons();
         updateWishlistButtons();
+        productsLoaded = true;
 
     } catch (error) {
         console.error("載入產品失敗:", error);
@@ -612,6 +622,15 @@ function updatePaginationButtons(totalPages) {
 
 // 處理分頁按鈕點擊
 function handlePaginationClick() {
+    // 產品還在載入時，第 2、3 頁還是空的，先擋下避免使用者看到一片空白
+    // 誤以為沒有產品
+    if (!productsLoaded) {
+        if (typeof showToast === 'function') {
+            showToast('產品載入中，請稍候');
+        }
+        return;
+    }
+
     const pageData = this.dataset.page;
     let targetPage;
     
