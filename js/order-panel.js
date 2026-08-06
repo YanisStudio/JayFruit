@@ -148,8 +148,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const defaultSenderPhone = document.getElementById('sender-phone').value.trim();
                 const defaultSenderAddress = document.getElementById('sender-address').value.trim();
                 const exportRange = document.querySelector('input[name="export-range"]:checked').value;
-                const deliveryDate = document.getElementById('delivery-date').value;
-                
+
                 if (!defaultSenderName || !defaultSenderPhone || !defaultSenderAddress) {
                     window.AdminCommon.showToast('請填寫完整的預設寄件人資訊', 'warning');
                     return;
@@ -190,7 +189,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 ]);
                 
                 const today = new Date().toISOString().split('T')[0];
-                const formattedDeliveryDate = deliveryDate || today;
+
+                // 黑貓格式的日期欄位是 YYYYMMDD；出貨日期為系統當日，希望配達日為出貨日+1天
+                const formatDateYYYYMMDD = (date) => {
+                    const y = date.getFullYear();
+                    const m = String(date.getMonth() + 1).padStart(2, '0');
+                    const d = String(date.getDate()).padStart(2, '0');
+                    return `${y}${m}${d}`;
+                };
+                const now = new Date();
+                const shipDateStr = formatDateYYYYMMDD(now);
+                const deliveryDateObj = new Date(now);
+                deliveryDateObj.setDate(now.getDate() + 1);
+                const deliveryDateStr = formatDateYYYYMMDD(deliveryDateObj);
 
                 // 匯出後要自動標示為「待出貨」的訂單 id（已出貨/已完成/已取消的訂單不動，避免被誤降回待出貨）
                 const orderIdsToMarkAwaitingShipment = [];
@@ -202,26 +213,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         orderIdsToMarkAwaitingShipment.push(doc.id);
                     }
 
-                    // 建立商品描述字串 (商品名稱X數量)
-                    let productDescription = '';
-                    if (orderData.items && orderData.items.length > 0) {
-                        const productList = orderData.items.map(item => 
-                            `${item.name}X${item.quantity}`
-                        ).join(', ');
-                        productDescription = productList;
-                    }
-                    
-                    // 建立品名字串
-                    let productNames = '';
-                    if (orderData.items && orderData.items.length > 0) {
-                        productNames = orderData.items.map(item => item.name).join(', ');
-                    }
-                    
                     // 決定寄件人資訊 - 優先使用客戶填入的送禮資訊
                     let senderName = defaultSenderName;
                     let senderPhone = defaultSenderPhone;
                     let senderAddress = defaultSenderAddress;
-                    
+
                     // 如果是送禮訂單且有寄件人資訊，使用客戶填入的資訊
                     if (orderData.isGift && orderData.sender) {
                         if (orderData.sender.name && orderData.sender.name.trim()) {
@@ -234,45 +230,33 @@ document.addEventListener('DOMContentLoaded', function() {
                             senderAddress = orderData.sender.address.trim();
                         }
                     }
-                    
-                    // 報值金額設定 - 使用訂單總金額
+
                     const orderTotal = orderData.total || 0;
-                    const shouldReport = orderTotal > 0 ? 'Y' : 'N';
-                    
-                    // 建立備註內容
-                    let remarks = orderData.notes || '';
-                    if (orderData.isGift) {
-                        remarks = '【送禮訂單】' + (remarks ? ' ' + remarks : '');
-                        // 如果是送禮但沒有寄件人資訊，在備註中標註
-                        if (!orderData.sender || !orderData.sender.name) {
-                            remarks += ' (未填寄件人資訊)';
-                        }
-                    }
-                    
+
                     blackcatData.push([
-                        productDescription || orderData.orderNumber || doc.id, // 訂單編號使用商品描述
-                        0, // 溫層 - 預設0
-                        0, // 距離 - 預設0
-                        0, // 規格 - 預設0
+                        '', // 訂單編號 - 不填
+                        '', // 溫層 - 不填
+                        '', // 距離 - 不填
+                        '', // 規格 - 不填
                         0, // 代收貨款 - 預設0
                         orderData.customer?.name || '', // 收件人姓名
                         orderData.customer?.phone || '', // 收件人電話
                         orderData.customer?.phone || '', // 收件人手機 (使用相同電話)
                         orderData.customer?.address || '', // 收件人地址
-                        senderName, // 寄件人姓名 (優先使用客戶填入的)
-                        senderPhone, // 寄件人電話 (優先使用客戶填入的)
-                        senderAddress, // 寄件人地址 (優先使用客戶填入的)
-                        today, // 出貨日期
-                        '不指定', // 希望配達日
-                        '不指定', // 希望配合時段
-                        'F01', // 品類代碼 (水果類)
-                        productNames || '新鮮水果', // 品名
-                        'N', // 易碎物品
+                        senderName, // 寄件人姓名 (優先使用客戶填入的送禮寄件人)
+                        senderPhone, // 寄件人電話 (優先使用客戶填入的送禮寄件人)
+                        senderAddress, // 寄件人地址 (優先使用客戶填入的送禮寄件人)
+                        shipDateStr, // 出貨日期 - 系統當日
+                        deliveryDateStr, // 希望配達日 - 出貨日+1天
+                        '', // 希望配合時段 - 不填
+                        '', // 品類代碼 - 不填
+                        '', // 品名 - 不填
+                        'Y', // 易碎物品
                         'N', // 精密儀器
-                        'N', // 備註 (包含送禮訂單標示)
-                        shouldReport, // 報值 (根據訂單金額決定)
-                        orderTotal, // 報值金額 (使用訂單總金額)
-                        'N' // 到付單
+                        '', // 備註 - 不填
+                        'Y', // 報值(Y|N)
+                        orderTotal, // 報值金額 - 使用訂單總金額
+                        'N' // 到付單(Y|N)
                     ]);
                 });
                 
