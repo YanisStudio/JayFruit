@@ -40,9 +40,20 @@
         padding: 3.75em 0;
     }
 
-    .bulletin-card {
+    .bulletin-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1.75rem;
         max-width: 720px;
         margin: 0 auto;
+    }
+
+    .bulletin-grid.bulletin-grid-2 {
+        max-width: 1080px;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .bulletin-card {
         background: #fff;
         border-radius: 16px;
         box-shadow: 0 10px 35px rgba(0, 0, 0, 0.08);
@@ -71,12 +82,12 @@
     .bulletin-card .bulletin-image {
         width: 100%;
         line-height: 0;
+        background: #fafafa;
     }
 
     .bulletin-card .bulletin-image img {
         width: 100%;
-        max-height: 420px;
-        object-fit: cover;
+        height: auto;
         display: block;
     }
 
@@ -87,16 +98,16 @@
     }
 
     @media (max-width: 768px) {
+        .bulletin-grid.bulletin-grid-2 {
+            grid-template-columns: 1fr;
+        }
+
         .bulletin-card .bulletin-body {
             padding: 1.75rem;
         }
 
         .bulletin-card .bulletin-text {
             font-size: 1.05rem;
-        }
-
-        .bulletin-card .bulletin-image img {
-            max-height: 280px;
         }
     }
 </style>
@@ -419,7 +430,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadBulletin();
 });
 
-// 從 Firebase 加載布告欄公告（後台「布告欄管理」設定的單一公告）
+// 從 Firebase 加載布告欄公告（後台「布告欄管理」設定的一到兩則公告）
 async function loadBulletin() {
     const container = document.getElementById('bulletin-content');
     if (!container) return;
@@ -435,30 +446,44 @@ async function loadBulletin() {
         }
 
         const data = bulletinSnap.data();
-        const text = (data.text || '').trim();
-        const imageUrl = data.imageUrl || '';
 
-        if (!text && !imageUrl) {
+        // 相容舊格式（單一公告存在 text / imageUrl 欄位），沒有 items 陣列時就把舊欄位當成一則公告
+        let items = Array.isArray(data.items) ? data.items : [];
+        if (items.length === 0 && (data.text || data.imageUrl)) {
+            items = [{ text: data.text || '', imageUrl: data.imageUrl || '' }];
+        }
+
+        items = items
+            .map(item => ({ text: (item.text || '').trim(), imageUrl: item.imageUrl || '' }))
+            .filter(item => item.text || item.imageUrl)
+            .slice(0, 2);
+
+        if (items.length === 0) {
             container.innerHTML = '<div class="bulletin-empty">目前沒有最新公告</div>';
             return;
         }
 
-        const imageHTML = imageUrl
-            ? `<div class="bulletin-image"><img src="${imageUrl}" alt="公告圖片" onerror="this.onerror=null; this.src='images/placeholder.jpg';"></div>`
-            : '';
-        const textHTML = text
-            ? `<div class="bulletin-text">${window.escapeHtml(text).replace(/\n/g, '<br>')}</div>`
-            : '';
+        const cardsHTML = items.map(item => {
+            const imageHTML = item.imageUrl
+                ? `<div class="bulletin-image"><img src="${item.imageUrl}" alt="公告圖片" onerror="this.onerror=null; this.src='images/placeholder.jpg';"></div>`
+                : '';
+            const textHTML = item.text
+                ? `<div class="bulletin-text">${window.escapeHtml(item.text).replace(/\n/g, '<br>')}</div>`
+                : '';
 
-        container.innerHTML = `
-            <div class="bulletin-card">
-                <div class="bulletin-body">
-                    <i class="fas fa-bullhorn bulletin-icon"></i>
-                    ${textHTML}
+            return `
+                <div class="bulletin-card">
+                    <div class="bulletin-body">
+                        <i class="fas fa-bullhorn bulletin-icon"></i>
+                        ${textHTML}
+                    </div>
+                    ${imageHTML}
                 </div>
-                ${imageHTML}
-            </div>
-        `;
+            `;
+        }).join('');
+
+        const gridClass = items.length === 2 ? 'bulletin-grid bulletin-grid-2' : 'bulletin-grid';
+        container.innerHTML = `<div class="${gridClass}">${cardsHTML}</div>`;
 
     } catch (error) {
         console.error('載入布告欄失敗:', error);

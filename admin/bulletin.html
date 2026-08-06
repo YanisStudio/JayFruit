@@ -27,17 +27,25 @@
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
             overflow: hidden;
+            margin-bottom: 24px;
         }
 
         .bulletin-container .card-header {
             display: flex;
             align-items: center;
+            justify-content: space-between;
             gap: 10px;
             padding: 20px 24px;
             border-bottom: 1px solid #eee;
         }
 
-        .bulletin-container .card-header i {
+        .bulletin-container .card-header-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .bulletin-container .card-header i.fa-bullhorn {
             color: #4caf50;
             font-size: 20px;
         }
@@ -55,6 +63,10 @@
             margin-bottom: 20px;
         }
 
+        .bulletin-container .form-group:last-child {
+            margin-bottom: 0;
+        }
+
         .bulletin-container .form-group label {
             display: block;
             margin-bottom: 8px;
@@ -62,9 +74,9 @@
             color: #333;
         }
 
-        .bulletin-container textarea#bulletin-text {
+        .bulletin-container textarea.bulletin-text-input {
             width: 100%;
-            min-height: 140px;
+            min-height: 120px;
             padding: 12px;
             border: 1px solid #ddd;
             border-radius: 6px;
@@ -99,9 +111,32 @@
             margin-top: 6px;
         }
 
-        #remove-bulletin-image {
+        .bulletin-container .remove-bulletin-image-btn {
             padding: 6px 14px;
             font-size: 13px;
+        }
+
+        /* 啟用第二則公告的開關 */
+        .bulletin-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #555;
+            cursor: pointer;
+        }
+
+        .bulletin-toggle input {
+            width: 16px;
+            height: 16px;
+        }
+
+        #slot-2-body {
+            display: none;
+        }
+
+        #slot-2-body.enabled {
+            display: block;
         }
     </style>
 
@@ -118,7 +153,6 @@
             doc,
             getDoc,
             setDoc,
-            deleteField,
             serverTimestamp
         } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
         import {
@@ -143,7 +177,6 @@
             doc,
             getDoc,
             setDoc,
-            deleteField,
             serverTimestamp,
             storageRef: ref,
             uploadBytes
@@ -199,39 +232,77 @@
         <div class="bulletin-container">
             <h1 class="admin-title">布告欄管理</h1>
 
-            <div class="settings-card">
-                <div class="card-header">
-                    <i class="fas fa-bullhorn"></i>
-                    <h2>首頁公告內容</h2>
-                </div>
+            <form id="bulletin-form">
+                <!-- 公告一 -->
+                <div class="settings-card">
+                    <div class="card-header">
+                        <div class="card-header-title">
+                            <i class="fas fa-bullhorn"></i>
+                            <h2>公告一</h2>
+                        </div>
+                    </div>
 
-                <div class="card-body">
-                    <form id="bulletin-form">
+                    <div class="card-body">
                         <div class="form-group">
-                            <label for="bulletin-text">公告文字</label>
-                            <textarea id="bulletin-text" placeholder="例如：中秋節出貨公告、休園通知等..."></textarea>
-                            <p class="bulletin-hint">會顯示在首頁「精選新鮮水果」原本的位置，文字跟圖片都是選填，但至少要填一項</p>
+                            <label for="bulletin-text-1">公告文字</label>
+                            <textarea class="bulletin-text-input" id="bulletin-text-1" placeholder="例如：中秋節出貨公告、休園通知等..."></textarea>
+                            <p class="bulletin-hint">文字跟圖片都是選填，但至少要填一項</p>
                         </div>
 
                         <div class="form-group">
-                            <label for="bulletin-image">公告圖片（選填，最多一張）</label>
-                            <input type="file" id="bulletin-image" accept="image/*">
-                            <div class="bulletin-image-preview" id="bulletin-image-preview">
-                                <img id="bulletin-preview-img" src="" alt="公告圖片預覽">
+                            <label for="bulletin-image-1">公告圖片（選填，最多一張，會等比例縮放、不裁切）</label>
+                            <input type="file" class="bulletin-image-input" id="bulletin-image-1" accept="image/*">
+                            <div class="bulletin-image-preview" id="bulletin-image-preview-1">
+                                <img class="bulletin-preview-img" id="bulletin-preview-img-1" src="" alt="公告圖片預覽">
                             </div>
                             <div class="bulletin-image-actions">
-                                <button type="button" class="btn btn-outline" id="remove-bulletin-image" style="display: none;">
+                                <button type="button" class="btn btn-outline remove-bulletin-image-btn" id="remove-bulletin-image-1" style="display: none;">
                                     <i class="fas fa-times"></i> 移除圖片
                                 </button>
                             </div>
                         </div>
-
-                        <button type="submit" class="btn btn-primary" id="save-bulletin-btn">
-                            <i class="fas fa-save"></i> 儲存公告
-                        </button>
-                    </form>
+                    </div>
                 </div>
-            </div>
+
+                <!-- 公告二 -->
+                <div class="settings-card">
+                    <div class="card-header">
+                        <div class="card-header-title">
+                            <i class="fas fa-bullhorn"></i>
+                            <h2>公告二</h2>
+                        </div>
+                        <label class="bulletin-toggle">
+                            <input type="checkbox" id="enable-slot-2">
+                            啟用第二則公告
+                        </label>
+                    </div>
+
+                    <div class="card-body" id="slot-2-body">
+                        <div class="form-group">
+                            <label for="bulletin-text-2">公告文字</label>
+                            <textarea class="bulletin-text-input" id="bulletin-text-2" placeholder="例如：中秋節出貨公告、休園通知等..."></textarea>
+                            <p class="bulletin-hint">文字跟圖片都是選填，但至少要填一項</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="bulletin-image-2">公告圖片（選填，最多一張，會等比例縮放、不裁切）</label>
+                            <input type="file" class="bulletin-image-input" id="bulletin-image-2" accept="image/*">
+                            <div class="bulletin-image-preview" id="bulletin-image-preview-2">
+                                <img class="bulletin-preview-img" id="bulletin-preview-img-2" src="" alt="公告圖片預覽">
+                            </div>
+                            <div class="bulletin-image-actions">
+                                <button type="button" class="btn btn-outline remove-bulletin-image-btn" id="remove-bulletin-image-2" style="display: none;">
+                                    <i class="fas fa-times"></i> 移除圖片
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="save-bulletin-btn">
+                    <i class="fas fa-save"></i> 儲存公告
+                </button>
+            </form>
         </div>
     </main>
 
@@ -248,8 +319,11 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        let currentImageUrl = '';
-        let removeImageFlag = false;
+        // 每個公告欄位的狀態：目前已儲存的圖片網址、使用者是否按了移除圖片
+        const slotState = {
+            1: { currentImageUrl: '', removeImageFlag: false },
+            2: { currentImageUrl: '', removeImageFlag: false }
+        };
 
         const waitForAdminCommon = function() {
             if (window.AdminCommon) {
@@ -284,44 +358,54 @@
                 form.addEventListener('submit', saveBulletin);
             }
 
-            const imageInput = document.getElementById('bulletin-image');
-            if (imageInput) {
-                imageInput.addEventListener('change', function(e) {
-                    const file = e.target.files[0];
-                    if (file) {
-                        removeImageFlag = false;
-                        const reader = new FileReader();
-                        reader.onload = function(event) {
-                            showImagePreview(event.target.result);
-                        };
-                        reader.readAsDataURL(file);
-                    }
-                });
-            }
+            [1, 2].forEach(function(slot) {
+                const imageInput = document.getElementById('bulletin-image-' + slot);
+                if (imageInput) {
+                    imageInput.addEventListener('change', function(e) {
+                        const file = e.target.files[0];
+                        if (file) {
+                            slotState[slot].removeImageFlag = false;
+                            const reader = new FileReader();
+                            reader.onload = function(event) {
+                                showImagePreview(slot, event.target.result);
+                            };
+                            reader.readAsDataURL(file);
+                        }
+                    });
+                }
 
-            const removeBtn = document.getElementById('remove-bulletin-image');
-            if (removeBtn) {
-                removeBtn.addEventListener('click', function() {
-                    removeImageFlag = true;
-                    currentImageUrl = '';
-                    document.getElementById('bulletin-image').value = '';
-                    hideImagePreview();
+                const removeBtn = document.getElementById('remove-bulletin-image-' + slot);
+                if (removeBtn) {
+                    removeBtn.addEventListener('click', function() {
+                        slotState[slot].removeImageFlag = true;
+                        slotState[slot].currentImageUrl = '';
+                        document.getElementById('bulletin-image-' + slot).value = '';
+                        hideImagePreview(slot);
+                    });
+                }
+            });
+
+            const enableSlot2 = document.getElementById('enable-slot-2');
+            const slot2Body = document.getElementById('slot-2-body');
+            if (enableSlot2 && slot2Body) {
+                enableSlot2.addEventListener('change', function() {
+                    slot2Body.classList.toggle('enabled', enableSlot2.checked);
                 });
             }
         };
 
-        const showImagePreview = function(src) {
-            const preview = document.getElementById('bulletin-image-preview');
-            const previewImg = document.getElementById('bulletin-preview-img');
-            const removeBtn = document.getElementById('remove-bulletin-image');
+        const showImagePreview = function(slot, src) {
+            const preview = document.getElementById('bulletin-image-preview-' + slot);
+            const previewImg = document.getElementById('bulletin-preview-img-' + slot);
+            const removeBtn = document.getElementById('remove-bulletin-image-' + slot);
             previewImg.src = src;
             preview.style.display = 'block';
             removeBtn.style.display = 'inline-flex';
         };
 
-        const hideImagePreview = function() {
-            const preview = document.getElementById('bulletin-image-preview');
-            const removeBtn = document.getElementById('remove-bulletin-image');
+        const hideImagePreview = function(slot) {
+            const preview = document.getElementById('bulletin-image-preview-' + slot);
+            const removeBtn = document.getElementById('remove-bulletin-image-' + slot);
             preview.style.display = 'none';
             removeBtn.style.display = 'none';
         };
@@ -335,17 +419,53 @@
                 const bulletinRef = doc(db, 'settings', 'bulletin');
                 const bulletinSnap = await getDoc(bulletinRef);
 
-                if (bulletinSnap.exists()) {
-                    const data = bulletinSnap.data();
-                    document.getElementById('bulletin-text').value = data.text || '';
-                    if (data.imageUrl) {
-                        currentImageUrl = data.imageUrl;
-                        showImagePreview(data.imageUrl);
+                if (!bulletinSnap.exists()) return;
+
+                const data = bulletinSnap.data();
+                const items = Array.isArray(data.items) ? data.items : [];
+
+                if (items[0]) {
+                    document.getElementById('bulletin-text-1').value = items[0].text || '';
+                    if (items[0].imageUrl) {
+                        slotState[1].currentImageUrl = items[0].imageUrl;
+                        showImagePreview(1, items[0].imageUrl);
                     }
+                }
+
+                if (items[1]) {
+                    document.getElementById('bulletin-text-2').value = items[1].text || '';
+                    if (items[1].imageUrl) {
+                        slotState[2].currentImageUrl = items[1].imageUrl;
+                        showImagePreview(2, items[1].imageUrl);
+                    }
+                    const enableSlot2 = document.getElementById('enable-slot-2');
+                    const slot2Body = document.getElementById('slot-2-body');
+                    enableSlot2.checked = true;
+                    slot2Body.classList.add('enabled');
                 }
             } catch (error) {
                 window.AdminCommon.handleError(error, '載入布告欄內容');
             }
+        };
+
+        // 上傳單一公告的圖片（如果有選新檔案），回傳最終要存的圖片網址
+        const resolveSlotImageUrl = async function(slot) {
+            const state = slotState[slot];
+            const imageFile = document.getElementById('bulletin-image-' + slot).files[0];
+
+            if (!imageFile) {
+                return state.removeImageFlag ? '' : state.currentImageUrl;
+            }
+
+            const { storage, storageRef, uploadBytes } = window.firebaseServices;
+            const timestamp = Date.now();
+            const imagePath = `bulletin/${timestamp}_${imageFile.name}`;
+            const imageRef = storageRef(storage, imagePath);
+            await uploadBytes(imageRef, imageFile);
+
+            const bucketName = "jayfruit-9dfab.firebasestorage.app";
+            const encodedPath = encodeURIComponent(imagePath);
+            return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedPath}?alt=media`;
         };
 
         const saveBulletin = async function(e) {
@@ -357,41 +477,52 @@
                 return;
             }
 
-            const text = document.getElementById('bulletin-text').value.trim();
-            const imageFile = document.getElementById('bulletin-image').files[0];
+            const text1 = document.getElementById('bulletin-text-1').value.trim();
+            const imageFile1 = document.getElementById('bulletin-image-1').files[0];
+            const hasImage1 = !!(imageFile1 || (!slotState[1].removeImageFlag && slotState[1].currentImageUrl));
 
-            if (!text && !imageFile && !currentImageUrl) {
-                window.AdminCommon.showToast('請至少填寫文字或選擇一張圖片', 'warning');
+            if (!text1 && !hasImage1) {
+                window.AdminCommon.showToast('公告一請至少填寫文字或選擇一張圖片', 'warning');
                 return;
+            }
+
+            const slot2Enabled = document.getElementById('enable-slot-2').checked;
+            let text2 = '';
+            if (slot2Enabled) {
+                text2 = document.getElementById('bulletin-text-2').value.trim();
+                const imageFile2 = document.getElementById('bulletin-image-2').files[0];
+                const hasImage2 = !!(imageFile2 || (!slotState[2].removeImageFlag && slotState[2].currentImageUrl));
+
+                if (!text2 && !hasImage2) {
+                    window.AdminCommon.showToast('公告二已啟用，請至少填寫文字或選擇一張圖片', 'warning');
+                    return;
+                }
             }
 
             window.AdminCommon.showLoading('儲存公告中...');
 
             try {
-                const db = window.firebaseServices.db;
-                const { doc, setDoc, deleteField, serverTimestamp, storage, storageRef, uploadBytes } = window.firebaseServices;
+                const { doc, setDoc, serverTimestamp, db } = window.firebaseServices;
 
-                let imageUrl = removeImageFlag ? '' : currentImageUrl;
+                const imageUrl1 = await resolveSlotImageUrl(1);
+                const items = [{ text: text1, imageUrl: imageUrl1 }];
 
-                if (imageFile) {
-                    const timestamp = Date.now();
-                    const imagePath = `bulletin/${timestamp}_${imageFile.name}`;
-                    const imageRef = storageRef(storage, imagePath);
-                    await uploadBytes(imageRef, imageFile);
-
-                    const bucketName = "jayfruit-9dfab.firebasestorage.app";
-                    const encodedPath = encodeURIComponent(imagePath);
-                    imageUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedPath}?alt=media`;
+                if (slot2Enabled) {
+                    const imageUrl2 = await resolveSlotImageUrl(2);
+                    items.push({ text: text2, imageUrl: imageUrl2 });
                 }
 
                 await setDoc(doc(db, 'settings', 'bulletin'), {
-                    text,
-                    imageUrl: imageUrl || deleteField(),
+                    items,
                     updatedAt: serverTimestamp()
-                }, { merge: true });
+                });
 
-                currentImageUrl = imageUrl;
-                removeImageFlag = false;
+                slotState[1].currentImageUrl = imageUrl1;
+                slotState[1].removeImageFlag = false;
+                if (slot2Enabled) {
+                    slotState[2].currentImageUrl = items[1].imageUrl;
+                    slotState[2].removeImageFlag = false;
+                }
                 window.AdminCommon.showToast('公告已儲存', 'success');
 
             } catch (error) {
