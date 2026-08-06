@@ -233,6 +233,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     const orderTotal = orderData.total || 0;
 
+                    // 品名 - 依照訂單內的產品名稱
+                    let productNames = '';
+                    if (orderData.items && orderData.items.length > 0) {
+                        productNames = orderData.items.map(item => item.name).join(', ');
+                    }
+
                     blackcatData.push([
                         '', // 訂單編號 - 不填
                         '', // 溫層 - 不填
@@ -250,7 +256,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         deliveryDateStr, // 希望配達日 - 出貨日+1天
                         '', // 希望配合時段 - 不填
                         '', // 品類代碼 - 不填
-                        '', // 品名 - 不填
+                        productNames, // 品名 - 依訂單產品名稱
                         'Y', // 易碎物品
                         'N', // 精密儀器
                         '', // 備註 - 不填
