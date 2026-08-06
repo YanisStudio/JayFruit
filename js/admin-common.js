@@ -34,7 +34,7 @@ function isAdmin(email) {
 async function initializeFirebase() {
     try {
         // 動態導入 Firebase 模組
-        const { initializeApp } = await import("https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js");
+        const { initializeApp, getApps, getApp } = await import("https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js");
         const { 
             getAuth, 
             onAuthStateChanged,
@@ -66,7 +66,12 @@ async function initializeFirebase() {
         } = await import("https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js");
         
         // 初始化 Firebase
-        firebaseApp = initializeApp(firebaseConfig);
+        // 每個後台頁面的 <head> 都已經各自呼叫過一次 initializeApp（先載入該頁面
+        // 自己需要的 Firebase 服務），這裡如果直接再呼叫一次會撞到「同一個 app
+        // 只能初始化一次」的限制而丟出 duplicate-app 錯誤，導致這個函式整個失敗、
+        // 每次進後台頁面都跳出「系統初始化失敗，請刷新頁面重試」的提示。
+        // 改成偵測 app 是否已存在，存在就直接重複使用，不重新初始化
+        firebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
         const auth = getAuth(firebaseApp);
         const db = getFirestore(firebaseApp);
         const storage = getStorage(firebaseApp);

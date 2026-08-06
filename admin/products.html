@@ -1357,16 +1357,10 @@
                 // 圖片檔案
                 const imageFile = document.getElementById('product-image').files[0];
                 
-                // 首先決定預設圖片 URL
-                let defaultImageUrl = '';
-                switch(category) {
-                    case 'pear': defaultImageUrl = 'images/pear.jpg'; break;
-                    case 'persimmon': defaultImageUrl = 'images/persimmon.jpg'; break;
-                    case 'peach': defaultImageUrl = 'images/peach.jpg'; break;
-                    case 'apple': defaultImageUrl = 'images/apple.jpg'; break;
-                    case 'gift': defaultImageUrl = 'images/gift.jpg'; break;
-                    default: defaultImageUrl = 'images/placeholder.jpg';
-                }
+                // 預設圖片 URL：images/pear.jpg、persimmon.jpg 等分類專屬預設圖檔案
+                // 實際上並不存在於 images/ 資料夾，商品若沒有另外上傳圖片，
+                // 一律使用確實存在的 placeholder.jpg，避免後台編輯預覽與前台商品圖破圖
+                const defaultImageUrl = 'images/placeholder.jpg';
                 
                 // 決定初始圖片 URL (編輯模式可能使用現有圖片)
                 let initialImageUrl = defaultImageUrl;
