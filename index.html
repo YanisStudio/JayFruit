@@ -91,12 +91,6 @@
         display: block;
     }
 
-    .bulletin-empty {
-        text-align: center;
-        color: #999;
-        padding: 2rem;
-    }
-
     @media (max-width: 768px) {
         .bulletin-grid.bulletin-grid-2 {
             grid-template-columns: 1fr;
@@ -310,16 +304,14 @@
             </div>
         </section>
         
-        <!-- 布告欄 - 顯示後台設定的公告 -->
-        <section class="bulletin-board">
+        <!-- 布告欄 - 顯示後台設定的公告，沒有啟用中的公告時整個區塊會隱藏 -->
+        <section class="bulletin-board" id="bulletin-section" style="display: none;">
             <div class="container">
                 <h2 class="section-title">最新公告</h2>
-                <div id="bulletin-content">
-                    <div class="loading-indicator">載入中...</div>
-                </div>
+                <div id="bulletin-content"></div>
             </div>
         </section>
-        
+
         <section class="benefits">
             <div class="container">
                 <h2 class="section-title">為什麼選擇我們？</h2>
@@ -432,8 +424,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // 從 Firebase 加載布告欄公告（後台「布告欄管理」設定的一到兩則公告）
 async function loadBulletin() {
+    const section = document.getElementById('bulletin-section');
     const container = document.getElementById('bulletin-content');
-    if (!container) return;
+    if (!container || !section) return;
 
     try {
         const { db, doc, getDoc } = window.firebaseServices;
@@ -441,7 +434,7 @@ async function loadBulletin() {
         const bulletinSnap = await getDoc(bulletinRef);
 
         if (!bulletinSnap.exists()) {
-            container.innerHTML = '<div class="bulletin-empty">目前沒有最新公告</div>';
+            section.style.display = 'none';
             return;
         }
 
@@ -459,7 +452,7 @@ async function loadBulletin() {
             .slice(0, 2);
 
         if (items.length === 0) {
-            container.innerHTML = '<div class="bulletin-empty">目前沒有最新公告</div>';
+            section.style.display = 'none';
             return;
         }
 
@@ -484,10 +477,11 @@ async function loadBulletin() {
 
         const gridClass = items.length === 2 ? 'bulletin-grid bulletin-grid-2' : 'bulletin-grid';
         container.innerHTML = `<div class="${gridClass}">${cardsHTML}</div>`;
+        section.style.display = '';
 
     } catch (error) {
         console.error('載入布告欄失敗:', error);
-        container.innerHTML = '<div class="bulletin-empty">目前沒有最新公告</div>';
+        section.style.display = 'none';
     }
 }
     </script>

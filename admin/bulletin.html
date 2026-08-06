@@ -131,10 +131,12 @@
             height: 16px;
         }
 
+        #slot-1-body,
         #slot-2-body {
             display: none;
         }
 
+        #slot-1-body.enabled,
         #slot-2-body.enabled {
             display: block;
         }
@@ -240,9 +242,13 @@
                             <i class="fas fa-bullhorn"></i>
                             <h2>公告一</h2>
                         </div>
+                        <label class="bulletin-toggle">
+                            <input type="checkbox" id="enable-slot-1" checked>
+                            啟用第一則公告
+                        </label>
                     </div>
 
-                    <div class="card-body">
+                    <div class="card-body enabled" id="slot-1-body">
                         <div class="form-group">
                             <label for="bulletin-text-1">公告文字</label>
                             <textarea class="bulletin-text-input" id="bulletin-text-1" placeholder="例如：中秋節出貨公告、休園通知等..."></textarea>
@@ -385,13 +391,15 @@
                 }
             });
 
-            const enableSlot2 = document.getElementById('enable-slot-2');
-            const slot2Body = document.getElementById('slot-2-body');
-            if (enableSlot2 && slot2Body) {
-                enableSlot2.addEventListener('change', function() {
-                    slot2Body.classList.toggle('enabled', enableSlot2.checked);
-                });
-            }
+            [1, 2].forEach(function(slot) {
+                const enableCheckbox = document.getElementById('enable-slot-' + slot);
+                const slotBody = document.getElementById('slot-' + slot + '-body');
+                if (enableCheckbox && slotBody) {
+                    enableCheckbox.addEventListener('change', function() {
+                        slotBody.classList.toggle('enabled', enableCheckbox.checked);
+                    });
+                }
+            });
         };
 
         const showImagePreview = function(slot, src) {
@@ -422,7 +430,17 @@
                 if (!bulletinSnap.exists()) return;
 
                 const data = bulletinSnap.data();
-                const items = Array.isArray(data.items) ? data.items : [];
+
+                // 相容舊格式（單一公告直接存在 text / imageUrl 欄位，沒有 items 陣列）
+                let items = Array.isArray(data.items) ? data.items : [];
+                if (items.length === 0 && (data.text || data.imageUrl)) {
+                    items = [{ text: data.text || '', imageUrl: data.imageUrl || '' }];
+                }
+
+                const enableSlot1 = document.getElementById('enable-slot-1');
+                const slot1Body = document.getElementById('slot-1-body');
+                const enableSlot2 = document.getElementById('enable-slot-2');
+                const slot2Body = document.getElementById('slot-2-body');
 
                 if (items[0]) {
                     document.getElementById('bulletin-text-1').value = items[0].text || '';
@@ -430,6 +448,11 @@
                         slotState[1].currentImageUrl = items[0].imageUrl;
                         showImagePreview(1, items[0].imageUrl);
                     }
+                    enableSlot1.checked = true;
+                    slot1Body.classList.add('enabled');
+                } else {
+                    enableSlot1.checked = false;
+                    slot1Body.classList.remove('enabled');
                 }
 
                 if (items[1]) {
@@ -438,10 +461,11 @@
                         slotState[2].currentImageUrl = items[1].imageUrl;
                         showImagePreview(2, items[1].imageUrl);
                     }
-                    const enableSlot2 = document.getElementById('enable-slot-2');
-                    const slot2Body = document.getElementById('slot-2-body');
                     enableSlot2.checked = true;
                     slot2Body.classList.add('enabled');
+                } else {
+                    enableSlot2.checked = false;
+                    slot2Body.classList.remove('enabled');
                 }
             } catch (error) {
                 window.AdminCommon.handleError(error, '載入布告欄內容');
@@ -477,13 +501,17 @@
                 return;
             }
 
-            const text1 = document.getElementById('bulletin-text-1').value.trim();
-            const imageFile1 = document.getElementById('bulletin-image-1').files[0];
-            const hasImage1 = !!(imageFile1 || (!slotState[1].removeImageFlag && slotState[1].currentImageUrl));
+            const slot1Enabled = document.getElementById('enable-slot-1').checked;
+            let text1 = '';
+            if (slot1Enabled) {
+                text1 = document.getElementById('bulletin-text-1').value.trim();
+                const imageFile1 = document.getElementById('bulletin-image-1').files[0];
+                const hasImage1 = !!(imageFile1 || (!slotState[1].removeImageFlag && slotState[1].currentImageUrl));
 
-            if (!text1 && !hasImage1) {
-                window.AdminCommon.showToast('公告一請至少填寫文字或選擇一張圖片', 'warning');
-                return;
+                if (!text1 && !hasImage1) {
+                    window.AdminCommon.showToast('公告一已啟用，請至少填寫文字或選擇一張圖片', 'warning');
+                    return;
+                }
             }
 
             const slot2Enabled = document.getElementById('enable-slot-2').checked;
@@ -503,13 +531,20 @@
 
             try {
                 const { doc, setDoc, serverTimestamp, db } = window.firebaseServices;
+                const items = [];
 
-                const imageUrl1 = await resolveSlotImageUrl(1);
-                const items = [{ text: text1, imageUrl: imageUrl1 }];
+                if (slot1Enabled) {
+                    const imageUrl1 = await resolveSlotImageUrl(1);
+                    items.push({ text: text1, imageUrl: imageUrl1 });
+                    slotState[1].currentImageUrl = imageUrl1;
+                    slotState[1].removeImageFlag = false;
+                }
 
                 if (slot2Enabled) {
                     const imageUrl2 = await resolveSlotImageUrl(2);
                     items.push({ text: text2, imageUrl: imageUrl2 });
+                    slotState[2].currentImageUrl = imageUrl2;
+                    slotState[2].removeImageFlag = false;
                 }
 
                 await setDoc(doc(db, 'settings', 'bulletin'), {
@@ -517,13 +552,7 @@
                     updatedAt: serverTimestamp()
                 });
 
-                slotState[1].currentImageUrl = imageUrl1;
-                slotState[1].removeImageFlag = false;
-                if (slot2Enabled) {
-                    slotState[2].currentImageUrl = items[1].imageUrl;
-                    slotState[2].removeImageFlag = false;
-                }
-                window.AdminCommon.showToast('公告已儲存', 'success');
+                window.AdminCommon.showToast(items.length > 0 ? '公告已儲存' : '布告欄已關閉，首頁不會顯示公告區塊', 'success');
 
             } catch (error) {
                 window.AdminCommon.handleError(error, '儲存布告欄');
