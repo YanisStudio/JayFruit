@@ -992,13 +992,36 @@ async function generateShippingOptions() {
         });
     }
     
+    // 標示出表單裡未填寫/未選擇的必填欄位，並捲動到第一個讓使用者看到
+    function highlightInvalidFields() {
+        const invalidFields = checkoutForm.querySelectorAll(':invalid');
+
+        invalidFields.forEach(function (field) {
+            field.classList.add('field-invalid');
+
+            const clearHighlight = function () {
+                field.classList.remove('field-invalid');
+                field.removeEventListener('input', clearHighlight);
+                field.removeEventListener('change', clearHighlight);
+            };
+            field.addEventListener('input', clearHighlight, { once: true });
+            field.addEventListener('change', clearHighlight, { once: true });
+        });
+
+        if (invalidFields.length > 0) {
+            invalidFields[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            invalidFields[0].focus({ preventScroll: true });
+        }
+    }
+
     // 提交訂單函數
     async function submitOrder() {
         if (!checkoutForm.checkValidity()) {
             showToast('請填寫所有必填欄位');
+            highlightInvalidFields();
             return;
         }
-        
+
         // 禁用提交按鈕，防止重複提交
         if (submitOrderBtn) {
             submitOrderBtn.disabled = true;

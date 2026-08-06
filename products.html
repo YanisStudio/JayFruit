@@ -496,7 +496,7 @@ function renderProductsToPage(products, pageNumber) {
         const unavailableBadge = isAvailable ? '' : '<span class="unavailable-badge">已下架</span>';
         const disabledAttr = (!isAvailable || product.stock <= 0) ? 'disabled' : '';
         const peachWarningHTML = product.category === 'peach'
-            ? '<div class="peach-warning"><i class="fas fa-triangle-exclamation"></i> 水蜜桃較容易內傷，發現將依比例退款</div>'
+            ? '<div class="peach-warning"><i class="fas fa-triangle-exclamation"></i> 水蜜桃較易內傷，發現將依比例退款</div>'
             : '';
 
         productsHTML += `
