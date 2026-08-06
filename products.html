@@ -311,28 +311,13 @@
             <div class="container">
                 <h2 class="section-title">全部商品</h2>
                 
-                <!-- 第一頁產品 -->
-                <div class="product-grid" id="page-1">
-                    <div class="loading-indicator">載入產品中...</div>
-                </div>
-                
-                <!-- 第二頁產品 -->
-                <div class="product-grid" id="page-2" style="display: none;">
+                <!-- 商品格 -->
+                <div class="product-grid" id="product-grid">
                     <div class="loading-indicator">載入產品中...</div>
                 </div>
 
-                <!-- 第三頁產品 -->
-                <div class="product-grid" id="page-3" style="display: none;">
-                    <div class="loading-indicator">載入產品中...</div>
-                </div>
-                
-                <!-- 分頁控制 -->
-                <div class="pagination">
-                    <button class="pagination-btn active" data-page="1">1</button>
-                    <button class="pagination-btn" data-page="2">2</button>
-                    <button class="pagination-btn" data-page="3">3</button>
-                    <button class="pagination-btn next" data-page="next">下一頁 <i class="fas fa-chevron-right"></i></button>
-                </div>
+                <!-- 分頁控制（依商品實際數量動態產生按鈕，不再限制最多3頁） -->
+                <div class="pagination" id="pagination"></div>
             </div>
         </section>
         
@@ -396,7 +381,11 @@ let currentProducts = [];
 let currentFilters = {
     category: 'all'
 };
-// 產品還在從 Firebase 載入時，第 2、3 頁的格子其實是空的。如果使用者在這時候
+// 分頁後的商品陣列（每個元素是一頁的商品清單），頁數依實際商品數量產生，不再限制最多3頁
+let paginatedPages = [];
+let currentPage = 1;
+const productsPerPage = 12;
+// 產品還在從 Firebase 載入時，分頁按鈕還沒有產生。如果使用者在這時候
 // 點分頁按鈕切過去，會看到一片空白，很容易誤以為「沒有產品」。用這個旗標擋下
 // 載入完成前的分頁點擊
 let productsLoaded = false;
@@ -419,7 +408,6 @@ document.addEventListener('DOMContentLoaded', function() {
 function initProductsPage() {
     loadProducts();
     initFilters();
-    initPagination();
     initWishlist();
 }
 
@@ -438,7 +426,7 @@ function autoScrollToProducts() {
 // 從 Firebase 載入產品（含已下架商品，讓已下架商品仍會顯示、只是不能購買）
 async function loadProducts() {
     try {
-        const productGrid = document.getElementById('page-1');
+        const productGrid = document.getElementById('product-grid');
         productGrid.innerHTML = '<div class="loading-indicator">載入產品中...</div>';
 
         // 使用 common.js 的 FirebaseUtils 載入產品，includeInactive 讓已下架商品也一併載入
@@ -446,7 +434,8 @@ async function loadProducts() {
 
         if (products.length === 0) {
             productGrid.innerHTML = '<div class="no-products">目前沒有可用的產品</div>';
-            updatePaginationButtons(0);
+            paginatedPages = [];
+            updatePaginationButtons();
             productsLoaded = true;
             return;
         }
@@ -462,7 +451,7 @@ async function loadProducts() {
 
     } catch (error) {
         console.error("載入產品失敗:", error);
-        const productGrid = document.getElementById('page-1');
+        const productGrid = document.getElementById('product-grid');
         productGrid.innerHTML = `<div class="error-message">載入產品時出錯：${error.message}</div>`;
     }
 }
@@ -474,29 +463,10 @@ function sortByAvailability(products) {
     return [...active, ...inactive];
 }
 
-// 渲染產品到頁面
-function renderProducts(products) {
-    const productGrids = document.querySelectorAll('.product-grid');
-    productGrids.forEach(grid => grid.innerHTML = '');
-    
-    const productsPerPage = 12;
-    const totalPages = Math.ceil(products.length / productsPerPage);
-    
-    for (let i = 0; i < Math.min(totalPages, 3); i++) {
-        const pageProducts = products.slice(i * productsPerPage, (i + 1) * productsPerPage);
-        renderProductsToPage(pageProducts, i + 1);
-    }
-    
-    updatePaginationButtons(totalPages);
-}
-
-// 渲染產品到指定頁面
-function renderProductsToPage(products, pageNumber) {
-    const productGrid = document.getElementById(`page-${pageNumber}`);
-    if (!productGrid) return;
-    
+// 依商品陣列建立卡片 HTML（供每一頁重複使用）
+function buildProductCardsHTML(products) {
     let productsHTML = '';
-    
+
     products.forEach(product => {
         const isAvailable = product.status === 'active';
         const tagHTML = product.tags?.length > 0 ? `<span class="product-tag">${product.tags[0]}</span>` : '';
@@ -538,7 +508,29 @@ function renderProductsToPage(products, pageNumber) {
         `;
     });
 
-    productGrid.innerHTML = productsHTML;
+    return productsHTML;
+}
+
+// 依商品實際數量切分頁面，並顯示第一頁（不再限制最多3頁）
+function renderProducts(products) {
+    paginatedPages = [];
+    for (let i = 0; i < products.length; i += productsPerPage) {
+        paginatedPages.push(products.slice(i, i + productsPerPage));
+    }
+    if (paginatedPages.length === 0) paginatedPages.push([]);
+
+    currentPage = 1;
+    renderCurrentPage();
+    updatePaginationButtons();
+}
+
+// 渲染目前頁面的商品到唯一的商品格容器
+function renderCurrentPage() {
+    const productGrid = document.getElementById('product-grid');
+    if (!productGrid) return;
+
+    const products = paginatedPages[currentPage - 1] || [];
+    productGrid.innerHTML = buildProductCardsHTML(products);
 }
 
 // 初始化篩選功能（分類按鈕，點擊立即套用篩選）
@@ -593,28 +585,29 @@ function updateSectionTitle() {
     }
 }
 
-// 更新分頁按鈕
-function updatePaginationButtons(totalPages) {
-    const paginationContainer = document.querySelector('.pagination');
+// 更新分頁按鈕（依 paginatedPages 的實際頁數產生，不再限制最多3頁）
+function updatePaginationButtons() {
+    const paginationContainer = document.getElementById('pagination');
     if (!paginationContainer) return;
-    
+
+    const totalPages = paginatedPages.length;
     paginationContainer.innerHTML = '';
-    
-    for (let i = 1; i <= Math.min(totalPages, 3); i++) {
-        const activeClass = i === 1 ? 'active' : '';
+
+    if (totalPages <= 1) return;
+
+    for (let i = 1; i <= totalPages; i++) {
+        const activeClass = i === currentPage ? 'active' : '';
         paginationContainer.innerHTML += `
             <button class="pagination-btn ${activeClass}" data-page="${i}">${i}</button>
         `;
     }
-    
-    if (totalPages > 1) {
-        paginationContainer.innerHTML += `
-            <button class="pagination-btn next" data-page="next">下一頁 <i class="fas fa-chevron-right"></i></button>
-        `;
-    }
-    
+
+    paginationContainer.innerHTML += `
+        <button class="pagination-btn next" data-page="next">下一頁 <i class="fas fa-chevron-right"></i></button>
+    `;
+
     // 重新綁定分頁按鈕事件
-    const paginationBtns = document.querySelectorAll('.pagination-btn');
+    const paginationBtns = paginationContainer.querySelectorAll('.pagination-btn');
     paginationBtns.forEach(btn => {
         btn.addEventListener('click', handlePaginationClick);
     });
@@ -622,7 +615,7 @@ function updatePaginationButtons(totalPages) {
 
 // 處理分頁按鈕點擊
 function handlePaginationClick() {
-    // 產品還在載入時，第 2、3 頁還是空的，先擋下避免使用者看到一片空白
+    // 產品還在載入時，分頁按鈕還沒產生，先擋下避免使用者看到一片空白
     // 誤以為沒有產品
     if (!productsLoaded) {
         if (typeof showToast === 'function') {
@@ -633,54 +626,31 @@ function handlePaginationClick() {
 
     const pageData = this.dataset.page;
     let targetPage;
-    
+
     if (pageData === 'next') {
-        const activePage = document.querySelector('.pagination-btn.active');
-        const currentPage = parseInt(activePage.dataset.page);
         targetPage = currentPage + 1;
-        
-        const maxPage = document.querySelectorAll('.pagination-btn:not(.next)').length;
-        if (targetPage > maxPage) {
+        if (targetPage > paginatedPages.length) {
             targetPage = 1;
         }
     } else {
         targetPage = parseInt(pageData);
     }
-    
+
     switchToPage(targetPage);
 }
 
 // 切換到指定頁面
 function switchToPage(pageNum) {
-    document.querySelectorAll('.product-grid').forEach(grid => {
-        grid.style.display = 'none';
-    });
-    
-    const targetGrid = document.getElementById(`page-${pageNum}`);
-    if (targetGrid) {
-        targetGrid.style.display = 'grid';
-    }
-    
-    document.querySelectorAll('.pagination-btn').forEach(btn => {
-        if (btn.dataset.page === String(pageNum)) {
-            btn.classList.add('active');
-        } else {
-            btn.classList.remove('active');
-        }
-    });
-    
+    currentPage = pageNum;
+
+    renderCurrentPage();
+    initAddToCartButtons();
+    initWishlistButtons();
+    updateWishlistButtons();
+    updatePaginationButtons();
+
     const productsSection = document.querySelector('.products-display');
     productsSection.scrollIntoView({ behavior: 'smooth' });
-}
-
-// 初始化分頁功能
-function initPagination() {
-    const paginationBtns = document.querySelectorAll('.pagination-btn');
-    paginationBtns.forEach(btn => {
-        btn.addEventListener('click', handlePaginationClick);
-    });
-    
-    switchToPage(1);
 }
 
 // 初始化收藏功能
