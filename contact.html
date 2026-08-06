@@ -584,6 +584,46 @@ document.addEventListener('DOMContentLoaded', function() {
 function initJayFruitContactPage() {
     initJayFruitFAQFunctionality();
     initContactForm();
+    initContactFormAutofill();
+}
+
+// 已登入會員自動帶入姓名/Email/電話，做法跟結帳頁（js/payment.js 的 loadUserProfile）一樣：
+// Email 先用 Firebase Auth 的帳號帶入，姓名/電話則從 Firestore 的 users/{uid} 補上
+// 只填目前還是空的欄位，避免蓋掉使用者已經自己打好的內容
+function initContactFormAutofill() {
+    if (!window.firebaseServices || !window.firebaseServices.auth) return;
+
+    window.firebaseServices.onAuthStateChanged(window.firebaseServices.auth, function(user) {
+        if (!user) return;
+
+        const nameInput = document.getElementById('contact-name');
+        const emailInput = document.getElementById('contact-email');
+        const phoneInput = document.getElementById('contact-phone');
+
+        if (emailInput && !emailInput.value && user.email) {
+            emailInput.value = user.email;
+        }
+
+        const { db, doc, getDoc } = window.firebaseServices;
+        getDoc(doc(db, 'users', user.uid))
+            .then((docSnap) => {
+                if (!docSnap.exists()) return;
+                const userData = docSnap.data();
+
+                if (nameInput && !nameInput.value && userData.name) {
+                    nameInput.value = userData.name;
+                }
+                if (phoneInput && !phoneInput.value && userData.phone) {
+                    phoneInput.value = userData.phone;
+                }
+                if (emailInput && !emailInput.value && userData.email) {
+                    emailInput.value = userData.email;
+                }
+            })
+            .catch((error) => {
+                console.error('自動帶入會員資料失敗:', error);
+            });
+    });
 }
 
 // 處理聯絡表單送出，寫入 Firestore 讓後台「訊息管理」頁面可以看到
