@@ -303,11 +303,6 @@
                     <button type="button" class="category-pill" data-category="apple">蘋果</button>
                     <button type="button" class="category-pill" data-category="gift">禮盒</button>
                 </div>
-
-                <div class="search-container">
-                    <input type="text" id="product-search" placeholder="搜尋產品...">
-                    <button id="search-button"><i class="fas fa-search"></i></button>
-                </div>
             </div>
         </section>
         
@@ -395,8 +390,7 @@
 // 產品頁面專用變數
 let currentProducts = [];
 let currentFilters = {
-    category: 'all',
-    search: ''
+    category: 'all'
 };
 
 // DOM 載入完成後初始化
@@ -417,7 +411,6 @@ document.addEventListener('DOMContentLoaded', function() {
 function initProductsPage() {
     loadProducts();
     initFilters();
-    initSearch();
     initPagination();
     initWishlist();
 }
@@ -575,10 +568,8 @@ function applyFilters() {
 function updateSectionTitle() {
     const sectionTitle = document.querySelector('.section-title');
     if (!sectionTitle) return;
-    
-    if (currentFilters.search) {
-        sectionTitle.textContent = `搜尋結果: "${currentFilters.search}"`;
-    } else if (currentFilters.category === 'all') {
+
+    if (currentFilters.category === 'all') {
         sectionTitle.textContent = '全部商品';
     } else {
         const categoryNames = {
@@ -590,52 +581,6 @@ function updateSectionTitle() {
         };
         sectionTitle.textContent = categoryNames[currentFilters.category] || '其他水果';
     }
-}
-
-// 初始化搜尋功能
-function initSearch() {
-    const searchInput = document.getElementById('product-search');
-    const searchButton = document.getElementById('search-button');
-    
-    if (searchInput && searchButton) {
-        searchButton.addEventListener('click', () => performSearch(searchInput.value));
-        searchInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') performSearch(searchInput.value);
-        });
-    }
-}
-
-// 執行搜尋
-function performSearch(searchTerm) {
-    searchTerm = searchTerm.trim().toLowerCase();
-    currentFilters.search = searchTerm;
-
-    if (!searchTerm) {
-        // 重置篩選器
-        document.querySelectorAll('.category-pill').forEach(b => b.classList.remove('active'));
-        const allPill = document.querySelector('.category-pill[data-category="all"]');
-        if (allPill) allPill.classList.add('active');
-        currentFilters = { category: 'all', search: '' };
-        renderProducts(sortByAvailability(currentProducts));
-        updateSectionTitle();
-        initAddToCartButtons();
-        initWishlistButtons();
-        updateWishlistButtons();
-        return;
-    }
-
-    // 搜尋產品
-    const searchResults = currentProducts.filter(product => {
-        const productName = product.name.toLowerCase();
-        const productDesc = product.description.toLowerCase();
-        return productName.includes(searchTerm) || productDesc.includes(searchTerm);
-    });
-
-    updateSectionTitle();
-    renderProducts(sortByAvailability(searchResults));
-    initAddToCartButtons();
-    initWishlistButtons();
-    updateWishlistButtons();
 }
 
 // 更新分頁按鈕

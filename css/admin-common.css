@@ -8,6 +8,22 @@
     box-sizing: border-box;
 }
 
+/* ===== 後台導覽選單（項目比前台多，桌面版縮小間距並允許換行，避免跑版）===== */
+@media (min-width: 769px) {
+    #main-nav ul {
+        flex-wrap: wrap;
+        row-gap: 0.4em;
+    }
+
+    #main-nav ul li {
+        margin: 0.2em 0.6em;
+    }
+
+    #main-nav ul li a {
+        font-size: 1em;
+    }
+}
+
 /* ===== 加載指示器樣式 ===== */
 .loading-overlay {
     position: fixed;
