@@ -445,50 +445,6 @@
             border-color: #c82333;
         }
 
-        /* 精選商品相關樣式 */
-        .product-featured-btn {
-            background: linear-gradient(45deg, #4caf50, #66bb6a);
-            color: white;
-            border: none;
-            padding: 6px 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            cursor: pointer;
-            margin: 2px;
-            transition: all 0.3s ease;
-        }
-        
-        .product-featured-btn:hover {
-            background: linear-gradient(45deg, #388e3c, #4caf50);
-            transform: translateY(-1px);
-        }
-        
-        .product-featured-btn.active {
-            background: linear-gradient(45deg, #2e7d32, #43a047);
-            box-shadow: 0 2px 8px rgba(46, 125, 50, 0.3);
-        }
-        
-        .product-featured-btn.active:hover {
-            background: linear-gradient(45deg, #1b5e20, #2e7d32);
-        }
-        
-        .product-featured-btn[disabled] {
-            opacity: 0.5;
-            cursor: not-allowed;
-            background: #ccc;
-        }
-        
-        .product-featured-badge {
-            background: linear-gradient(45deg, #4caf50, #66bb6a);
-            color: white;
-            padding: 2px 6px;
-            border-radius: 10px;
-            font-size: 10px;
-            font-weight: bold;
-            margin-left: 5px;
-            display: inline-block;
-        }
-        
         /* 操作按鈕區域調整 */
         .product-table td:last-child {
             min-width: 160px;
@@ -812,9 +768,6 @@
     <script src="../js/member.js"></script>
     <script src="../js/admin-common.js"></script>
     <script>
-    // 全局變量：當前精選商品ID列表
-    let currentFeaturedProductIds = [];
-
     // 等待DOM完全加載後執行
     document.addEventListener('DOMContentLoaded', function() {
         // 等待 AdminCommon 載入完成
@@ -863,10 +816,7 @@
             
             // 獲取商品列表
             loadProducts();
-            
-            // 加載當前精選商品
-            loadCurrentFeaturedProducts();
-            
+
             // 綁定表單提交事件
             const productForm = document.getElementById('product-form');
             if (productForm) {
@@ -889,7 +839,6 @@
             if (refreshBtn) {
                 refreshBtn.addEventListener('click', function() {
                     loadProducts();
-                    loadCurrentFeaturedProducts();
                 });
             }
             
@@ -982,79 +931,7 @@
             }
         };
 
-        // 加載當前精選商品
-        const loadCurrentFeaturedProducts = async function() {
-            try {
-                const db = window.firebaseServices.db;
-                const collection = window.firebaseServices.collection;
-                const getDocs = window.firebaseServices.getDocs;
-                const query = window.firebaseServices.query;
-                const where = window.firebaseServices.where;
-                
-                console.log('查詢當前精選商品...');
-                
-                const featuredQuery = query(
-                    collection(db, "products"),
-                    where("isFeaturedOffer", "==", true)
-                );
-                
-                const featuredSnapshot = await getDocs(featuredQuery);
-                
-                currentFeaturedProductIds = [];
-                featuredSnapshot.forEach(doc => {
-                    currentFeaturedProductIds.push(doc.id);
-                });
-                
-                console.log('當前精選商品ID列表:', currentFeaturedProductIds);
-            } catch (error) {
-                console.error('查詢精選商品失敗:', error);
-            }
-        };
-        
-        // 設定/取消精選商品
-        const toggleFeaturedProduct = async function(productId, isFeatured) {
-            showLoading();
-            try {
-                const db = window.firebaseServices.db;
-                const doc = window.firebaseServices.doc;
-                const updateDoc = window.firebaseServices.updateDoc;
-                
-                console.log('開始設定精選商品，商品ID:', productId, '目前狀態:', isFeatured);
-                
-                if (isFeatured) {
-                    // 取消精選
-                    const productRef = doc(db, "products", productId);
-                    await updateDoc(productRef, { isFeaturedOffer: false });
-                    console.log('已取消精選商品設定');
-                    alert('已取消精選商品設定');
-                    
-                    // 從精選列表中移除
-                    currentFeaturedProductIds = currentFeaturedProductIds.filter(id => id !== productId);
-                } else {
-                    // 設定為精選
-                    const productRef = doc(db, "products", productId);
-                    await updateDoc(productRef, { isFeaturedOffer: true });
-                    console.log('已設定為精選商品');
-                    alert('已成功設定為精選商品');
-                    
-                    // 添加到精選列表
-                    if (!currentFeaturedProductIds.includes(productId)) {
-                        currentFeaturedProductIds.push(productId);
-                    }
-                }
-                
-                // 重新載入商品列表以更新按鈕狀態
-                loadProducts();
-                
-            } catch (error) {
-                console.error('設定精選商品失敗:', error);
-                alert('設定精選商品失敗: ' + error.message);
-            } finally {
-                hideLoading();
-            }
-        };
-        
-        // 加載商品列表 - 修改版本，包含精選商品按鈕
+        // 加載商品列表
         const loadProducts = async function() {
             showLoading();
             try {
@@ -1113,15 +990,6 @@
                                     case 'gift': categoryText = '禮盒'; break;
                                 }
                                 
-                                // 檢查是否為精選商品
-                                const isFeatured = product.isFeaturedOffer === true;
-                                const featuredBadge = isFeatured ? '<span class="product-featured-badge">精選</span>' : '';
-                                
-                                // 精選商品按鈕
-                                const featuredBtnClass = isFeatured ? 'product-featured-btn active' : 'product-featured-btn';
-                                const featuredBtnText = isFeatured ? '取消精選' : '設為精選';
-                                const featuredBtnDisabled = product.status !== 'active' ? 'disabled' : '';
-                                
                                 productsHTML += `
                                     <tr>
                                         <td><input type="checkbox" class="product-select-checkbox" data-id="${productId}"></td>
@@ -1130,7 +998,6 @@
                                         </td>
                                         <td>
                                             ${window.AdminCommon.escapeHtml(product.name)}
-                                            ${featuredBadge}
                                             <span class="product-id-hint">ID: ${productId.substring(0, 6)}...</span>
                                         </td>
                                         <td>${categoryText}</td>
@@ -1148,12 +1015,6 @@
                                                 </button>
                                                 <button class="product-action-btn product-delete-btn" data-id="${productId}">
                                                     <i class="fas fa-trash"></i>
-                                                </button>
-                                                <button class="${featuredBtnClass}" 
-                                                        data-id="${productId}" 
-                                                        data-is-featured="${isFeatured}"
-                                                        ${featuredBtnDisabled}>
-                                                    ${featuredBtnText}
                                                 </button>
                                             </div>
                                         </td>
@@ -1182,25 +1043,6 @@
                                 });
                             });
                             
-                            // 綁定精選商品按鈕事件
-                            const featuredButtons = document.querySelectorAll('.product-featured-btn');
-                            featuredButtons.forEach(button => {
-                                button.addEventListener('click', function() {
-                                    if (this.disabled) return;
-                                    
-                                    const productId = this.dataset.id;
-                                    const isFeatured = this.dataset.isFeatured === 'true';
-                                    
-                                    // 確認操作
-                                    const action = isFeatured ? '取消精選商品設定' : '設定為精選商品';
-                                    const confirmMessage = `確定要${action}嗎？`;
-                                    
-                                    if (confirm(confirmMessage)) {
-                                        toggleFeaturedProduct(productId, isFeatured);
-                                    }
-                                });
-                            });
-
                             // 綁定商品勾選事件（批次排程用）
                             bindProductSelectionEvents();
                         }
@@ -1652,10 +1494,7 @@
                     // 刪除商品文檔
                     await deleteDoc(doc(db, "products", productId));
                     console.log('商品刪除成功');
-                    
-                    // 如果刪除的是精選商品，從記錄中移除
-                    currentFeaturedProductIds = currentFeaturedProductIds.filter(id => id !== productId);
-                    
+
                     alert('商品已成功刪除！');
                     loadProducts();
                 } catch (deleteError) {
