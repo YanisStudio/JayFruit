@@ -2388,15 +2388,71 @@ footer {
 
 /* 確保手機版也有相同樣式 */
 .user-profile-mobile .admin-link {
-    display: block;
+    display: flex;
     text-align: left;
-    margin: 8px 0;
+    margin: 4px 0 0;
+}
+
+.user-profile-mobile .admin-link i {
+    margin-right: 0; /* 改用 .user-links a 的 gap 對齊，避免跟其他項目間距不一致 */
 }
 
 /* 使管理按鈕在選單中更突出 */
 #user-menu .admin-link {
     margin-top: 8px;
     margin-bottom: 8px;
+}
+
+/* 手機版選單：已登入狀態的會員資訊卡片 */
+.user-profile-mobile {
+    background-color: #f9f9f9;
+    border-radius: 0.5em;
+    padding: 0.75em 0.9em;
+    margin-top: 0.625em;
+}
+
+.user-profile-mobile .user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.625em;
+    padding-bottom: 0.75em;
+    margin-bottom: 0.5em;
+    border-bottom: 1px solid #e0e0e0;
+    font-weight: 600;
+    color: #333;
+}
+
+.user-profile-mobile .user-info i {
+    font-size: 1.4em;
+    color: #4caf50;
+}
+
+.user-profile-mobile .user-links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25em;
+}
+
+.user-profile-mobile .user-links a {
+    display: flex;
+    align-items: center;
+    gap: 0.625em;
+    padding: 0.625em 0.5em;
+    color: #333;
+    text-decoration: none;
+    border-radius: 0.375em;
+    transition: background-color 0.2s ease;
+}
+
+.user-profile-mobile .user-links a:hover,
+.user-profile-mobile .user-links a:active {
+    background-color: #eee;
+}
+
+.user-profile-mobile .user-links a i {
+    width: 1.2em;
+    text-align: center;
+    color: #666;
 }
 
 /* 管理仪表盘样式 */
