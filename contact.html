@@ -460,65 +460,66 @@
                             <span class="jay-faq-toggle"><i class="fas fa-plus"></i></span>
                         </div>
                         <div class="jay-faq-answer">
+                            <p>每種水果都有它最對味的產季，我們整理了全年產期給您參考，方便挑選當季最新鮮的滋味：</p>
                             <div class="jay-seasonal-info">
                                 <div class="season-item">
-                                    <span class="season-icon">🟠</span>
+                                    <img class="season-icon-img" src="images/season-xigualai.png" alt="西瓜李">
                                     <div>
-                                        <strong>甜柿</strong><br>
+                                        <strong>西瓜李</strong><br>
                                         6月（端午節前）
                                     </div>
                                 </div>
                                 <div class="season-item">
-                                    <span class="season-icon">🍑</span>
+                                    <img class="season-icon-img" src="images/season-shuimeitao.png" alt="水蜜桃">
                                     <div>
                                         <strong>水蜜桃</strong><br>
                                         7月中旬（為期14天）
                                     </div>
                                 </div>
                                 <div class="season-item">
-                                    <span class="season-icon">🍐</span>
+                                    <img class="season-icon-img" src="images/season-xiangfuli.png" alt="香馥梨">
                                     <div>
                                         <strong>香馥梨</strong><br>
-                                        7月底～8月初
+                                        8月中～9月初
                                     </div>
                                 </div>
                                 <div class="season-item">
-                                    <span class="season-icon">🍐</span>
+                                    <img class="season-icon-img" src="images/season-xinshijili.png" alt="新世紀梨">
                                     <div>
                                         <strong>新世紀梨</strong><br>
                                         8月中～9月初
                                     </div>
                                 </div>
                                 <div class="season-item">
-                                    <span class="season-icon">🍐</span>
+                                    <img class="season-icon-img" src="images/season-huangyuli.png" alt="皇御梨">
                                     <div>
                                         <strong>皇御梨</strong><br>
                                         9月底（中秋節前）
                                     </div>
                                 </div>
                                 <div class="season-item">
-                                    <span class="season-icon">🟠</span>
+                                    <img class="season-icon-img" src="images/season-tianshi.png" alt="甜柿">
                                     <div>
                                         <strong>甜柿</strong><br>
                                         10月中旬
                                     </div>
                                 </div>
                                 <div class="season-item">
-                                    <span class="season-icon">🟠</span>
+                                    <img class="season-icon-img" src="images/season-tianshi-fuyou.png" alt="甜柿（富有）">
                                     <div>
                                         <strong>甜柿（富有）</strong><br>
-                                        11月初旬
+                                        11月初
                                     </div>
                                 </div>
                                 <div class="season-item">
-                                    <span class="season-icon">🍐</span>
+                                    <img class="season-icon-img" src="images/season-xueli.png" alt="雪梨">
                                     <div>
                                         <strong>雪梨</strong><br>
-                                        12月左右（依氣候降溫時間）
+                                        約12月（視氣候降溫早晚而定）
                                     </div>
                                 </div>
                             </div>
-                            <p>產季會依當年氣候略有提前或延後，我們會根據季節推薦最新鮮的當季水果，讓您享受到最佳的風味體驗。</p>
+                            <p>實際產季會依當年氣候略有提前或延後，我們會依實際採收狀況為您推薦當下最新鮮的水果，讓您每次都能吃到最佳風味。</p>
                         </div>
                     </div>
                 </div>
@@ -1063,8 +1064,10 @@ function initJayFruitFAQFunctionality() {
     border-left: 4px solid #27ae60;
 }
 
-.season-icon {
-    font-size: 1.5rem;
+.season-icon-img {
+    width: 3rem;
+    height: 3rem;
+    object-fit: contain;
     flex-shrink: 0;
 }
 
@@ -1100,7 +1103,7 @@ function initJayFruitFAQFunctionality() {
     
     .example-icon,
     .reason-icon,
-    .season-icon {
+    .season-icon-img {
         margin-bottom: 0.5rem;
     }
 }
