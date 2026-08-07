@@ -7,13 +7,13 @@
     <link rel="apple-touch-icon" sizes="180x180" href="images/apple-touch-icon.png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>產品列表 - 杰の御果園 | 台灣優質高山水果</title>
-    <meta name="description" content="瀏覽杰の御果園最新上架的水果與禮盒，包含梨子、水蜜桃、蘋果、柿子等台灣高山水果，線上直接下單訂購，新鮮直送到府。">
+    <meta name="description" content="瀏覽杰の御果園最新上架的水果與禮盒，包含梨子、水蜜桃、蘋果、甜柿等台灣高山水果，線上直接下單訂購，新鮮直送到府。">
     <meta name="keywords" content="台灣水果,高山水果,新鮮水果,水果禮盒,梨子,水蜜桃,蘋果,杰の御果園,果園直送,有機水果">
     <meta name="author" content="杰の御果園">
 
     <!-- Open Graph 標籤 -->
     <meta property="og:title" content="產品列表 - 杰の御果園">
-    <meta property="og:description" content="瀏覽杰の御果園最新上架的水果與禮盒，包含梨子、水蜜桃、蘋果、柿子等台灣高山水果，線上直接下單訂購，新鮮直送到府。">
+    <meta property="og:description" content="瀏覽杰の御果園最新上架的水果與禮盒，包含梨子、水蜜桃、蘋果、甜柿等台灣高山水果，線上直接下單訂購，新鮮直送到府。">
     <meta property="og:image" content="https://jayfarmer.tw/images/logo.jpg">
     <meta property="og:url" content="https://jayfarmer.tw/products.html">
     <meta property="og:type" content="website">
@@ -298,10 +298,11 @@
                 <div class="category-pills" id="category-pills">
                     <button type="button" class="category-pill active" data-category="all">所有水果</button>
                     <button type="button" class="category-pill" data-category="pear">梨子</button>
-                    <button type="button" class="category-pill" data-category="persimmon">柿子</button>
+                    <button type="button" class="category-pill" data-category="persimmon">甜柿</button>
                     <button type="button" class="category-pill" data-category="peach">水蜜桃</button>
                     <button type="button" class="category-pill" data-category="apple">蘋果</button>
                     <button type="button" class="category-pill" data-category="gift">禮盒</button>
+                    <button type="button" class="category-pill" data-category="featured">特色商品</button>
                 </div>
             </div>
         </section>
@@ -586,10 +587,11 @@ function updateSectionTitle() {
     } else {
         const categoryNames = {
             'pear': '梨子',
-            'persimmon': '柿子',
+            'persimmon': '甜柿',
             'peach': '水蜜桃',
             'apple': '蘋果',
-            'gift': '禮盒'
+            'gift': '禮盒',
+            'featured': '特色商品'
         };
         sectionTitle.textContent = categoryNames[currentFilters.category] || '其他水果';
     }

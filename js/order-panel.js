@@ -371,10 +371,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             let categoryText = '其他';
                             switch(item.category) {
                                 case 'pear': categoryText = '梨子'; break;
-                                case 'persimmon': categoryText = '柿子'; break;
+                                case 'persimmon': categoryText = '甜柿'; break;
                                 case 'peach': categoryText = '水蜜桃'; break;
                                 case 'apple': categoryText = '蘋果'; break;
                                 case 'gift': categoryText = '禮盒'; break;
+                                case 'featured': categoryText = '特色商品'; break;
                             }
                             
                             detailData.push([

@@ -598,10 +598,11 @@
                             <select id="product-category" required style="width: 100%; height: 40px; font-size: 15px; padding: 5px;">
                                 <option value="">請選擇分類</option>
                                 <option value="pear">梨子</option>
-                                <option value="persimmon">柿子</option>
+                                <option value="persimmon">甜柿</option>
                                 <option value="peach">水蜜桃</option>
                                 <option value="apple">蘋果</option>
                                 <option value="gift">禮盒</option>
+                                <option value="featured">特色商品</option>
                             </select>
                         </div>
                     </div>
@@ -984,10 +985,11 @@
                                 let categoryText = '其他';
                                 switch(product.category) {
                                     case 'pear': categoryText = '梨子'; break;
-                                    case 'persimmon': categoryText = '柿子'; break;
+                                    case 'persimmon': categoryText = '甜柿'; break;
                                     case 'peach': categoryText = '水蜜桃'; break;
                                     case 'apple': categoryText = '蘋果'; break;
                                     case 'gift': categoryText = '禮盒'; break;
+                                    case 'featured': categoryText = '特色商品'; break;
                                 }
                                 
                                 productsHTML += `

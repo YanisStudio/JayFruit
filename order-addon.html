@@ -931,10 +931,11 @@
         // 品類對應表 - 從admin/shipping.html複製
         const categoryMap = {
             'pear': '梨子',
-            'persimmon': '柿子', 
+            'persimmon': '甜柿',
             'peach': '水蜜桃',
             'apple': '蘋果',
-            'gift': '禮盒'
+            'gift': '禮盒',
+            'featured': '特色商品'
         };
 
         // 獲取商品品類的函數
@@ -942,13 +943,14 @@
             // 根據商品名稱或其他屬性判斷品類
             const name = product.name.toLowerCase();
             const tags = product.tags || [];
-            
+
             if (name.includes('梨') || tags.includes('梨子')) return 'pear';
-            if (name.includes('柿') || tags.includes('柿子')) return 'persimmon';
+            if (name.includes('柿') || tags.includes('甜柿')) return 'persimmon';
             if (name.includes('桃') || tags.includes('水蜜桃')) return 'peach';
             if (name.includes('蘋果') || tags.includes('蘋果')) return 'apple';
             if (name.includes('禮盒') || tags.includes('禮盒')) return 'gift';
-            
+            if (tags.includes('特色商品')) return 'featured';
+
             // 預設為梨子
             return 'pear';
         }

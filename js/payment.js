@@ -17,10 +17,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // 分類對應 - 更新為水果分類
     const categoryMap = {
         'pear': '梨子',
-        'persimmon': '柿子',
+        'persimmon': '甜柿',
         'peach': '水蜜桃', 
         'apple': '蘋果',
-        'gift': '禮盒'
+        'gift': '禮盒',
+        'featured': '特色商品'
     };
     
     // 從 common.js 載入產品資料 (使用與 products.html 相同的方法)
