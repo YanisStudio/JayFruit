@@ -424,37 +424,30 @@ function autoScrollToProducts() {
 }
 
 // 從 Firebase 載入產品（含已下架商品，讓已下架商品仍會顯示、只是不能購買）
-// Firebase SDK 是從 gstatic.com 用 <script type="module"> 非同步載入的，網路較慢
-// 或 CDN 一時延遲時，這裡執行的當下 Firebase 可能還沒初始化完成、或 Firestore
-// 從本地空快取先解析出一份空結果，導致直接拋錯或傳回 0 筆商品、顯示「目前沒有
-// 可用的產品」——但其實商品都在，使用者重新整理就正常了。這兩種情況都自動重試，
-// 不用逼使用者自己動手重新整理
+// 「連線失敗」跟「真的沒有商品」是兩條分開判斷的路徑，不會混在一起：
+// - FirebaseUtils.loadProducts() 拋出例外 → 判定是連線/初始化時序問題（Firebase
+//   SDK 是從 gstatic.com 非同步載入的，網路較慢時查詢當下可能還沒初始化完成），
+//   自動重試，間隔時間漸增但封頂 8 秒，絕不放棄，網路一恢復商品就會自己跑出來
+// - 查詢成功但陣列是空的 → 判定是真的沒有商品，直接顯示，不會誤判成斷線去重試
 async function loadProducts(retryCount = 0) {
-    const maxRetries = 2;
-    const retryDelays = [1000, 2000]; // 第一次重試等1秒，第二次等2秒
+    const productGrid = document.getElementById('product-grid');
 
-    const retryOrShowEmpty = (productGrid) => {
-        if (retryCount < maxRetries) {
-            const delay = retryDelays[retryCount];
-            console.log(`目前查無商品，${delay}ms 後自動重試第 ${retryCount + 1} 次...`);
-            setTimeout(() => loadProducts(retryCount + 1), delay);
-            return;
-        }
-        productGrid.innerHTML = '<div class="no-products">目前沒有可用的產品</div>';
-        paginatedPages = [];
-        updatePaginationButtons();
-        productsLoaded = true;
-    };
+    // 前 2 次失敗畫面保持安靜（顯示原本的載入中），避免網路只是頓一下就顯示
+    // 嚇人的訊息；第 3 次開始才明確顯示「連線不穩定」，讓使用者知道是在等
+    // 重新連線、不是頁面卡死
+    productGrid.innerHTML = retryCount >= 3
+        ? '<div class="loading-indicator">連線不穩定，正在自動重新連線中...</div>'
+        : '<div class="loading-indicator">載入產品中...</div>';
 
     try {
-        const productGrid = document.getElementById('product-grid');
-        productGrid.innerHTML = '<div class="loading-indicator">載入產品中...</div>';
-
         // 使用 common.js 的 FirebaseUtils 載入產品，includeInactive 讓已下架商品也一併載入
         const products = await FirebaseUtils.loadProducts(null, { includeInactive: true });
 
         if (products.length === 0) {
-            retryOrShowEmpty(productGrid);
+            productGrid.innerHTML = '<div class="no-products">目前沒有可用的產品</div>';
+            paginatedPages = [];
+            updatePaginationButtons();
+            productsLoaded = true;
             return;
         }
 
@@ -468,23 +461,10 @@ async function loadProducts(retryCount = 0) {
         productsLoaded = true;
 
     } catch (error) {
-        console.error("載入產品失敗:", error);
+        console.error("載入產品失敗，判定為連線問題，自動重試:", error);
 
-        if (retryCount < maxRetries) {
-            const delay = retryDelays[retryCount];
-            console.log(`${delay}ms 後自動重試第 ${retryCount + 1} 次...`);
-            setTimeout(() => loadProducts(retryCount + 1), delay);
-            return;
-        }
-
-        // 重試 2 次都失敗才顯示錯誤畫面，並提供手動重新載入按鈕（不用整頁重新整理）
-        const productGrid = document.getElementById('product-grid');
-        productGrid.innerHTML = `
-            <div class="error-message">
-                載入產品時發生錯誤，請稍後再試<br>
-                <button type="button" class="btn btn-primary" style="margin-top: 1em;" onclick="loadProducts()">重新載入</button>
-            </div>
-        `;
+        const delay = Math.min(1000 * Math.pow(2, retryCount), 8000);
+        setTimeout(() => loadProducts(retryCount + 1), delay);
     }
 }
 
