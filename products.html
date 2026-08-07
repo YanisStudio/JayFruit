@@ -428,8 +428,11 @@ function autoScrollToProducts() {
 // - FirebaseUtils.loadProducts() 拋出例外 → 判定是連線/初始化時序問題（Firebase
 //   SDK 是從 gstatic.com 非同步載入的，網路較慢時查詢當下可能還沒初始化完成），
 //   自動重試，間隔時間漸增但封頂 8 秒，絕不放棄，網路一恢復商品就會自己跑出來
-// - 查詢成功但陣列是空的 → 判定是真的沒有商品，直接顯示，不會誤判成斷線去重試
-async function loadProducts(retryCount = 0) {
+// - 查詢成功但陣列是空的 → 大多數情況代表真的沒有商品，但剛進站就立刻點進
+//   商品頁時，Firebase 連線可能還沒完全穩定，查詢有機會「沒拋錯但其實查得
+//   不準」而回傳空結果。所以空結果不會第一時間就相信：先短暫延遲重新確認
+//   幾次，連續都是空的才真的判定是沒有商品，避免誤判
+async function loadProducts(retryCount = 0, emptyRecheckCount = 0) {
     const productGrid = document.getElementById('product-grid');
 
     // 前 2 次失敗畫面保持安靜（顯示原本的載入中），避免網路只是頓一下就顯示
@@ -444,6 +447,14 @@ async function loadProducts(retryCount = 0) {
         const products = await FirebaseUtils.loadProducts(null, { includeInactive: true });
 
         if (products.length === 0) {
+            // 空結果先不急著相信，短暫延遲後再查一次確認，最多重新確認 2 次
+            // （跟下面拋例外的重試分開計數，不會互相干擾）
+            const MAX_EMPTY_RECHECKS = 2;
+            if (emptyRecheckCount < MAX_EMPTY_RECHECKS) {
+                setTimeout(() => loadProducts(retryCount, emptyRecheckCount + 1), 700);
+                return;
+            }
+
             productGrid.innerHTML = '<div class="no-products">目前沒有可用的產品</div>';
             paginatedPages = [];
             updatePaginationButtons();
@@ -464,7 +475,7 @@ async function loadProducts(retryCount = 0) {
         console.error("載入產品失敗，判定為連線問題，自動重試:", error);
 
         const delay = Math.min(1000 * Math.pow(2, retryCount), 8000);
-        setTimeout(() => loadProducts(retryCount + 1), delay);
+        setTimeout(() => loadProducts(retryCount + 1, emptyRecheckCount), delay);
     }
 }
 
