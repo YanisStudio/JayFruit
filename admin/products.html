@@ -25,11 +25,12 @@
             onAuthStateChanged
         } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
         import { 
-            getFirestore, 
+            initializeFirestore, 
             collection, 
             addDoc,
             getDoc,
             getDocs,
+            getDocsFromServer,
             doc,
             updateDoc,
             deleteDoc,
@@ -53,7 +54,9 @@
         // 初始化Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        const db = getFirestore(app);
+        // 自動偵測目前網路環境是否會擋掉預設的串流連線，會的話自動改用相容性更好的
+        // 長輪詢，降低連線逾時、被誤判成「查無資料」的機率
+        const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
         const storage = getStorage(app);
         
         // 將Firebase服務暴露給全局使用
@@ -67,6 +70,7 @@
             addDoc,
             getDoc,
             getDocs,
+            getDocsFromServer,
             doc,
             updateDoc,
             deleteDoc,
@@ -933,30 +937,35 @@
         };
 
         // 加載商品列表
-        const loadProducts = async function() {
+        // attempt 用來做連線失敗時的自動重試（間隔漸增但封頂 8 秒），跟下面
+        // productsSnapshot.empty 的「真的沒有商品」是兩條分開判斷的路徑，
+        // 不會把「連不上」誤判成「沒有商品」
+        const loadProducts = async function(attempt = 1) {
             showLoading();
             try {
                 const db = window.firebaseServices.db;
                 const collection = window.firebaseServices.collection;
-                const getDocs = window.firebaseServices.getDocs;
+                const getDocsFromServer = window.firebaseServices.getDocsFromServer;
                 const query = window.firebaseServices.query;
                 const orderBy = window.firebaseServices.orderBy;
-                
+
                 console.log('開始從 Firestore 加載商品列表...');
-                
+
                 // 獲取所有商品
                 const productsRef = collection(db, "products");
                 console.log('商品集合引用:', productsRef);
-                
-                // 使用 try-catch 包裝查詢以捕獲權限錯誤
+
+                // 使用 try-catch 包裝查詢以捕獲連線/權限錯誤
                 try {
                     const productsQuery = query(
                         productsRef,
                         orderBy("createdAt", "desc")
                     );
-                    
+
                     console.log('執行查詢...');
-                    const productsSnapshot = await getDocs(productsQuery);
+                    // 用 getDocsFromServer 強制連到伺服器查詢，連不上會直接 throw，
+                    // 不會像 getDocs 那樣悄悄退回本地空快取、被誤判成「沒有商品」
+                    const productsSnapshot = await getDocsFromServer(productsQuery);
                     console.log('查詢完成，找到商品數量:', productsSnapshot.size);
                     
                     const productListElement = document.getElementById('product-list');
@@ -1050,33 +1059,37 @@
                         }
                     }
                 } catch (queryError) {
-                    console.error('商品查詢發生錯誤:', queryError);
-                    console.error('可能是 Firestore 權限問題，請檢查 Firestore 規則設置');
-                    
-                    // 顯示錯誤信息
+                    console.error(`商品查詢發生錯誤（第 ${attempt} 次嘗試）:`, queryError);
+
                     const productListElement = document.getElementById('product-list');
                     if (productListElement) {
                         productListElement.innerHTML = `
                             <tr class="placeholder-row">
-                                <td colspan="9" class="text-center">查詢商品時發生權限錯誤，請檢查 Firestore 權限設置</td>
+                                <td colspan="9" class="text-center">連線不穩定，正在自動重新連線中...</td>
                             </tr>
                         `;
                     }
-                    
-                    alert('商品查詢失敗，可能是 Firestore 權限問題。請確保已設置正確的 Firestore 權限規則。');
+
+                    const retryDelay = Math.min(attempt * 1000, 8000);
+                    setTimeout(() => loadProducts(attempt + 1), retryDelay);
+                    return;
                 }
             } catch (error) {
-                console.error("獲取商品列表失敗:", error);
+                console.error(`獲取商品列表失敗（第 ${attempt} 次嘗試）:`, error);
                 console.error("錯誤詳情:", error.code, error.message, error.stack);
-                
+
                 const productListElement = document.getElementById('product-list');
                 if (productListElement) {
                     productListElement.innerHTML = `
                         <tr class="placeholder-row">
-                            <td colspan="9" class="text-center">獲取商品數據失敗，請重試</td>
+                            <td colspan="9" class="text-center">連線不穩定，正在自動重新連線中...</td>
                         </tr>
                     `;
                 }
+
+                const retryDelay = Math.min(attempt * 1000, 8000);
+                setTimeout(() => loadProducts(attempt + 1), retryDelay);
+                return;
             } finally {
                 hideLoading();
             }

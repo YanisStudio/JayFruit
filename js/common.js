@@ -557,7 +557,7 @@ const FirebaseUtils = {
 
         const db = CommonModule.firebase.db;
         const collection = CommonModule.firebase.collection;
-        const getDocs = CommonModule.firebase.getDocs;
+        const getDocsFromServer = CommonModule.firebase.getDocsFromServer;
         const query = CommonModule.firebase.query;
         const where = CommonModule.firebase.where;
 
@@ -566,7 +566,10 @@ const FirebaseUtils = {
             ? collection(db, "products")
             : query(collection(db, "products"), where("status", "==", "active"));
 
-        const productsSnapshot = await getDocs(productsQuery);
+        // 用 getDocsFromServer 強制連到伺服器查詢：連得上，不管有沒有資料都給
+        // 真實答案；連不上直接 throw，交給呼叫端的重試機制處理，不會像
+        // getDocs 那樣悄悄退回本地空快取、把「連不上」誤判成「沒有商品」
+        const productsSnapshot = await getDocsFromServer(productsQuery);
 
         if (productsSnapshot.empty) {
             return [];

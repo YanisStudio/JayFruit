@@ -56,10 +56,12 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const db = window.firebaseServices.db;
             const collection = window.firebaseServices.collection;
-            const getDocs = window.firebaseServices.getDocs;
-            
+            const getDocsFromServer = window.firebaseServices.getDocsFromServer;
+
             const productsCollection = collection(db, "products");
-            const productsSnapshot = await getDocs(productsCollection);
+            // 強制連到伺服器查詢，避免連線問題被 getDocs 悄悄退回的本地空快取
+            // 蓋掉，導致結帳頁誤判成「沒有商品/沒有庫存」
+            const productsSnapshot = await getDocsFromServer(productsCollection);
             
             const products = [];
             productsSnapshot.forEach(doc => {

@@ -24,9 +24,10 @@
           onAuthStateChanged
         } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
         import { 
-          getFirestore,
+          initializeFirestore,
           collection,
           getDocs,
+          getDocsFromServer,
           doc,
           setDoc,
           getDoc,
@@ -41,7 +42,9 @@
         
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        const db = getFirestore(app);
+        // 自動偵測目前網路環境是否會擋掉預設的串流連線，會的話自動改用相容性更好的
+        // 長輪詢，降低連線逾時、被誤判成「查無資料」的機率
+        const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
         
         window.firebaseServices = {
           auth: auth,
@@ -50,6 +53,7 @@
           onAuthStateChanged,
           collection,
           getDocs,
+          getDocsFromServer,
           doc,
           setDoc,
           getDoc,
