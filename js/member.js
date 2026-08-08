@@ -620,17 +620,26 @@ window.showMemberErrorModal = showMemberErrorModal;
 window.showMemberWarningModal = showMemberWarningModal;
 
 // 管理員檢查函數
-function isAdmin(email) {
-    return window.ADMIN_EMAILS.includes(email?.toLowerCase());
+// 改讀 Firebase Auth 的 admin custom claim，取代比對寫死的信箱清單，
+// 需要 user 物件（不只是 email）才能呼叫 getIdTokenResult()
+async function isAdmin(user) {
+    if (!user) return false;
+    try {
+        const tokenResult = await user.getIdTokenResult();
+        return tokenResult.claims.admin === true;
+    } catch (error) {
+        console.error('讀取權限狀態失敗:', error);
+        return false;
+    }
 }
 
 // 用戶登入狀態操作函數
-function saveUserState(user) {
+async function saveUserState(user) {
     if (user) {
         localStorage.setItem('userIsLoggedIn', 'true');
         localStorage.setItem('userEmail', user.email || '');
         // 使用管理員檢查函數
-        if (isAdmin(user.email)) {
+        if (await isAdmin(user)) {
             localStorage.setItem('isAdmin', 'true');
         } else {
             localStorage.removeItem('isAdmin');
@@ -694,8 +703,8 @@ document.addEventListener('DOMContentLoaded', function() {
     let confirmationResult = null;
 
     // 檢查當前登入用戶是否為管理員
-    const checkIfAdmin = function(user) {
-        if (user && isAdmin(user.email)) {
+    const checkIfAdmin = async function(user) {
+        if (user && await isAdmin(user)) {
             console.log('管理員登入:', user.email);
             if (adminBtn) adminBtn.style.display = 'block';
             if (adminBtnMobile) adminBtnMobile.style.display = 'block';
@@ -903,13 +912,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
             console.log('電話號碼登入成功:', user.uid);
 
-            saveUserState(user);
-            
+            await saveUserState(user);
+
             // 電話登入的用戶顯示為 "手機用戶"
             const displayName = '手機用戶';
-            
+
             localStorage.setItem('userName', displayName);
-            checkIfAdmin(user);
+            await checkIfAdmin(user);
 
             // 保存或更新用戶資料到 Firestore
             await saveUserToFirestore(user, displayName, 'phone');
@@ -1083,11 +1092,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     const user = result.user;
                     
                     console.log('Google 登入成功:', user.uid);
-                    
-                    saveUserState(user);
+
+                    await saveUserState(user);
                     const displayName = user.displayName || user.email?.split('@')[0] || 'Google用戶';
                     localStorage.setItem('userName', displayName);
-                    checkIfAdmin(user);
+                    await checkIfAdmin(user);
 
                     // 保存或更新用戶資料到 Firestore
                     await saveUserToFirestore(user, displayName, 'google');
@@ -1157,11 +1166,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     const user = result.user;
                     
                     console.log('Facebook 登入成功:', user.uid);
-                    
-                    saveUserState(user);
+
+                    await saveUserState(user);
                     const displayName = user.displayName || user.email?.split('@')[0] || 'Facebook用戶';
                     localStorage.setItem('userName', displayName);
-                    checkIfAdmin(user);
+                    await checkIfAdmin(user);
                     
                     // 保存或更新用戶資料到 Firestore
                     await saveUserToFirestore(user, displayName, 'facebook');
@@ -1308,9 +1317,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         console.log('重定向登入成功:', user.uid);
 
                         const displayName = user.displayName || user.email?.split('@')[0] || '用戶';
-                        saveUserState(user);
+                        await saveUserState(user);
                         localStorage.setItem('userName', displayName);
-                        checkIfAdmin(user);
+                        await checkIfAdmin(user);
 
                         // 彈窗被瀏覽器擋掉、改用重定向登入時，這條路徑之前完全沒呼叫
                         // saveUserToFirestore，導致這樣登入的用戶從未被寫入 Firestore
@@ -1336,11 +1345,11 @@ document.addEventListener('DOMContentLoaded', function() {
         function handleLogout() {
             console.log("嘗試登出");
             signOut(auth)
-                .then(() => {
+                .then(async () => {
                     console.log("登出成功");
-                    
+
                     // 清除本地存儲中的用戶狀態
-                    saveUserState(null);
+                    await saveUserState(null);
                     
                     // 關閉用戶選單
                     if (userMenu) userMenu.style.display = 'none';
@@ -1390,21 +1399,21 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // 監聽認證狀態變化
-        onAuthStateChanged(auth, function(user) {
+        onAuthStateChanged(auth, async function(user) {
             console.log("認證狀態變化，用戶狀態:", user ? "已登入" : "未登入");
-            
+
             if (user) {
                 console.log("用戶已登入:", user.uid);
-                
-                saveUserState(user);
-                
+
+                await saveUserState(user);
+
                 // 更新 UI
                 if (userActions) userActions.style.display = 'none';
                 if (userProfile) userProfile.style.display = 'flex';
                 if (userActionsMobile) userActionsMobile.style.display = 'none';
                 if (userProfileMobile) userProfileMobile.style.display = 'block';
-                
-                checkIfAdmin(user);
+
+                await checkIfAdmin(user);
                 
                 // 更新最後登入時間
                 const lastUpdate = localStorage.getItem('lastLoginUpdate');
@@ -1483,8 +1492,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
             } else {
                 console.log("用戶未登入");
-                
-                saveUserState(null);
+
+                await saveUserState(null);
                 
                 // 更新 UI
                 if (userActions) userActions.style.display = 'flex';

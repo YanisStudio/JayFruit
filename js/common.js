@@ -374,11 +374,11 @@ function updateCartCount(animate = false) {
  */
 function initAdminAccess() {
     if (CommonModule.firebase) {
-        CommonModule.firebase.onAuthStateChanged(CommonModule.firebase.auth, function(user) {
+        CommonModule.firebase.onAuthStateChanged(CommonModule.firebase.auth, async function(user) {
             const adminBtnDesktop = document.getElementById('admin-btn');
             const adminBtnMobile = document.getElementById('admin-btn-mobile');
-            
-            if (user && isAdmin(user.email)) {
+
+            if (user && await isAdmin(user)) {
                 // 顯示管理按鈕
                 if (adminBtnDesktop) adminBtnDesktop.style.display = 'block';
                 if (adminBtnMobile) adminBtnMobile.style.display = 'block';
@@ -394,9 +394,17 @@ function initAdminAccess() {
 
 /**
  * 檢查是否為管理員
+ * 改讀 Firebase Auth 的 admin custom claim，取代比對寫死的信箱清單
  */
-function isAdmin(email) {
-    return window.ADMIN_EMAILS.includes(email?.toLowerCase());
+async function isAdmin(user) {
+    if (!user) return false;
+    try {
+        const tokenResult = await user.getIdTokenResult();
+        return tokenResult.claims.admin === true;
+    } catch (error) {
+        console.error('讀取權限狀態失敗:', error);
+        return false;
+    }
 }
 
 /**

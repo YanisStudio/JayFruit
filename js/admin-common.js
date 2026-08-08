@@ -20,11 +20,19 @@ let currentUser = null;
 
 /**
  * 檢查是否為管理員
- * @param {string} email - 用戶郵箱
- * @returns {boolean} - 是否為管理員
+ * 改讀 Firebase Auth 的 admin custom claim，取代比對寫死的信箱清單
+ * @param {object} user - Firebase Auth 使用者物件
+ * @returns {Promise<boolean>} - 是否為管理員
  */
-function isAdmin(email) {
-    return window.ADMIN_EMAILS.includes(email?.toLowerCase());
+async function isAdmin(user) {
+    if (!user) return false;
+    try {
+        const tokenResult = await user.getIdTokenResult();
+        return tokenResult.claims.admin === true;
+    } catch (error) {
+        console.error('讀取權限狀態失敗:', error);
+        return false;
+    }
 }
 
 /**
@@ -130,8 +138,8 @@ function checkAdminAccess(onSuccess = null, onFailed = null) {
         return;
     }
     
-    window.firebaseServices.onAuthStateChanged(window.firebaseServices.auth, function(user) {
-        if (!user || !isAdmin(user.email)) {
+    window.firebaseServices.onAuthStateChanged(window.firebaseServices.auth, async function(user) {
+        if (!user || !(await isAdmin(user))) {
             console.log('非管理員訪問，重定向回首頁');
             currentUser = null;
             
