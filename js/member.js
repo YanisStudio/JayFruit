@@ -1480,9 +1480,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     })
                     .catch((error) => {
                         console.warn('無法連接到數據庫:', error);
+
+                        // 連線失敗不代表沒有名字可顯示——localStorage 裡可能已經有
+                        // 上次登入存下來的正確名字（畫面此刻其實正確顯示著），這種
+                        // 情況下維持原樣就好，不要用信箱前綴這種較差的名字蓋掉它。
+                        // 只有完全沒有任何快取過的名字時，才退而求其次用信箱前綴。
+                        const cachedName = localStorage.getItem('userName');
+                        if (cachedName) {
+                            return;
+                        }
+
                         const name = user.email?.split('@')[0] || user.phoneNumber || '用戶';
                         localStorage.setItem('userName', name);
-                        
+
                         if (usernameDisplay) {
                             usernameDisplay.textContent = name;
                         }
