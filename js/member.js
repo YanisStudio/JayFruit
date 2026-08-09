@@ -674,9 +674,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const usernameDisplayMobile = document.getElementById('username-display-mobile');
 
     // 從window對象獲取Firebase服務
-    const { 
-        auth, 
-        db, 
+    const {
+        auth,
         getAuth,
         signOut, 
         onAuthStateChanged,
@@ -970,7 +969,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // 保存用戶資料到 Firestore
     async function saveUserToFirestore(user, displayName, provider) {
         try {
-            const userRef = doc(db, 'users', user.uid);
+            // 即時讀 window.firebaseServices.db，不用外層解構時快取的舊變數——
+            // 連線重建時舊變數會停在已經失效的連線上
+            const userRef = doc(window.firebaseServices.db, 'users', user.uid);
             const userSnap = await getDoc(userRef);
             
             // 處理電話號碼格式 - 從 +886 轉換為 09
@@ -1419,7 +1420,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const lastUpdate = localStorage.getItem('lastLoginUpdate');
                 const now = Date.now();
                 if (!lastUpdate || (now - parseInt(lastUpdate)) > 3600000) {
-                    setDoc(doc(db, 'users', user.uid), {
+                    setDoc(doc(window.firebaseServices.db, 'users', user.uid), {
                         lastLoginAt: serverTimestamp()
                     }, { merge: true })
                     .then(() => {
@@ -1429,9 +1430,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         console.warn('更新最後登入時間失敗:', error);
                     });
                 }
-                
+
                 // 從 Firestore 獲取用戶資料
-                getDoc(doc(db, 'users', user.uid))
+                getDoc(doc(window.firebaseServices.db, 'users', user.uid))
                     .then((docSnap) => {
                         if (docSnap.exists()) {
                             // Firestore 的 name 欄位可能為空字串或不存在（例如手機登入的新用戶尚未填寫姓名），

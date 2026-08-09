@@ -544,6 +544,62 @@ function waitForAuthReady() {
     return authReadyPromise;
 }
 
+// Firestore 底層連線偶爾會卡在錯誤狀態，同一個連線物件繼續重試往往要等很多次
+// 才會恢復，跟手動整頁重新整理立刻正常有明顯落差（重新整理會建立全新連線，
+// 繞過卡住的舊連線）。這個函式做的事跟重新整理達到同樣效果，但只換掉
+// window.firebaseServices.db 這一個屬性，不整個換掉 window.firebaseServices
+// 物件、也不重新整理頁面，所以會保留使用者當下的捲動位置、篩選條件等狀態。
+//
+// 安全前提：全站沒有地方把 db 從 window.firebaseServices 解構出來，快取成
+// 長生命週期的區域變數（例如在 DOMContentLoaded 最外層 const { db } = ...
+// 之後給很多函式共用）——那樣的變數換連線後不會自動更新，還在用已經
+// terminate 掉的舊連線。要在每次真正要用 db 的當下，才去
+// window.firebaseServices.db 現抓（全站已經逐一確認過都是這樣寫的）。
+let resettingFirestoreConnection = null;
+let lastFirestoreResetAt = 0;
+const FIRESTORE_RESET_COOLDOWN_MS = 60000;
+
+async function resetFirestoreConnection() {
+    if (!CommonModule.firebase || !CommonModule.firebase.app ||
+        !CommonModule.firebase.initializeFirestore || !CommonModule.firebase.terminate) {
+        console.warn('這個頁面沒有暴露重建 Firestore 連線所需的函式，略過');
+        return;
+    }
+
+    const now = Date.now();
+    if (now - lastFirestoreResetAt < FIRESTORE_RESET_COOLDOWN_MS) {
+        console.log('剛重建過 Firestore 連線，冷卻中，略過這次');
+        return;
+    }
+
+    if (resettingFirestoreConnection) {
+        return resettingFirestoreConnection;
+    }
+
+    resettingFirestoreConnection = (async () => {
+        try {
+            console.log('嘗試重建 Firestore 連線...');
+            const oldDb = CommonModule.firebase.db;
+            await CommonModule.firebase.terminate(oldDb);
+            const newDb = CommonModule.firebase.initializeFirestore(CommonModule.firebase.app, {
+                experimentalAutoDetectLongPolling: true
+            });
+            // 只換 window.firebaseServices 的 db 屬性，不整個換掉物件——
+            // 所有透過 window.firebaseServices.db 即時讀取的地方會自動抓到新連線
+            window.firebaseServices.db = newDb;
+            lastFirestoreResetAt = Date.now();
+            console.log('Firestore 連線已重建');
+        } catch (error) {
+            console.error('重建 Firestore 連線失敗:', error);
+        } finally {
+            resettingFirestoreConnection = null;
+        }
+    })();
+
+    return resettingFirestoreConnection;
+}
+window.resetFirestoreConnection = resetFirestoreConnection;
+
 /**
  * Firebase 相關工具函數
  */

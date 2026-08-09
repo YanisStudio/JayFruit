@@ -125,18 +125,19 @@
             PhoneAuthProvider,
             signInWithCredential
         } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { 
-            initializeFirestore, 
-            collection, 
-            doc, 
-            setDoc, 
+        import {
+            initializeFirestore,
+            terminate,
+            collection,
+            doc,
+            setDoc,
             getDoc,
             getDocs,
             getDocsFromServer,
             query,
             orderBy,
             where,
-            serverTimestamp 
+            serverTimestamp
         } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         
         const firebaseConfig = window.FIREBASE_CONFIG;
@@ -148,8 +149,13 @@
         const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
         
         window.firebaseServices = {
+            app: app,
             auth: auth,
             db: db,
+            // 商品頁重試多次還連不上時，common.js 的 resetFirestoreConnection()
+            // 要用這兩個重建連線，只有這個頁面（有重試迴圈）需要暴露
+            initializeFirestore,
+            terminate,
             getAuth,
             createUserWithEmailAndPassword,
             signInWithEmailAndPassword,
@@ -465,6 +471,14 @@ async function loadProducts(retryCount = 0) {
 
     } catch (error) {
         console.error("載入產品失敗，判定為連線問題，自動重試:", error);
+
+        // 同一個連線物件卡住的話，光靠重試往往要等很多次才會自己恢復，
+        // 跟使用者手動整頁重新整理立刻正常有明顯落差。重試到第 4 次還沒
+        // 成功，就重建 Firestore 連線再繼續重試（resetFirestoreConnection
+        // 內建節流，短時間內不會重複重建）
+        if (retryCount >= 3 && window.resetFirestoreConnection) {
+            await window.resetFirestoreConnection();
+        }
 
         const delay = Math.min(1000 * Math.pow(2, retryCount), 8000);
         setTimeout(() => loadProducts(retryCount + 1), delay);
