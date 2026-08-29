@@ -1500,6 +1500,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
         }
 
+        // 暴露到全域，讓 common.js 的 bindUserMenuLinks()（下拉選單裡的登出
+        // 連結會被 initUserDropdown() clone 節點重新綁定）能呼叫到這份登出
+        // 邏輯，不用自己另外重複實作一份。只在還沒有人設定過 window.handleLogout
+        // 時才設定——orders.html、profile.html 這類頁面自己在全域宣告了一份
+        // 「登出後導回首頁」的版本（比這裡先執行，因為是同一支 script 裡
+        // 同步宣告的），那些頁面應該保留自己的版本，不能被這裡蓋掉
+        if (!window.handleLogout) {
+            window.handleLogout = handleLogout;
+        }
+
         // 桌面版登出按鈕
         if (logoutBtn) {
             logoutBtn.addEventListener('click', function(e) {

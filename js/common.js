@@ -172,7 +172,14 @@ function bindUserMenuLinks(menu) {
             link.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                handleLogout();
+                // 呼叫 member.js 暴露出來的登出邏輯（唯一正確版本，不整頁
+                // 重新整理）；理論上 member.js 一定會比這裡先執行完，
+                // 保留這個判斷純粹是防禦性寫法
+                if (window.handleLogout) {
+                    window.handleLogout();
+                } else {
+                    console.error('登出功能尚未就緒，請重新整理頁面再試');
+                }
             });
         }
     });
@@ -188,11 +195,10 @@ function initMobileMenuButtons() {
     // 註冊按鈕
     setupMobileButton('register-btn-mobile', 'register-btn');
     
-    // 登出按鈕
-    setupMobileLogoutButton();
-    
-    // 桌面版登出按鈕
-    setupDesktopLogoutButton();
+    // 登出按鈕：桌面版/手機版登出按鈕的事件綁定已經統一交給 member.js
+    // 處理（member.js 會直接對原始元素綁定，不會 clone 節點），這裡不用
+    // 再重複綁定一次——見下面 setupMobileLogoutButton/setupDesktopLogoutButton
+    // 的移除說明
 }
 
 /**
@@ -222,66 +228,17 @@ function setupMobileButton(mobileId, desktopId) {
 }
 
 /**
- * 設置手機版登出按鈕
+ * 登出按鈕的事件綁定跟實際登出邏輯，原本這裡有一份自己的實作
+ * （setupMobileLogoutButton／setupDesktopLogoutButton／handleLogout），
+ * 用 cloneNode 把按鈕整個換掉再重新綁定——問題是 member.js 也會對同一顆
+ * 按鈕綁定它自己一份更完整的登出邏輯（清 reCAPTCHA、不整頁重新整理、
+ * 正確更新 UI），這裡的 cloneNode 執行時機如果晚於 member.js 綁定，會把
+ * member.js 的監聽器整個清掉，變成只剩這裡「登出後 location.reload()」
+ * 這個比較陽春的版本在跑。實際症狀：在 order-success.html 這種頁面上，
+ * 匯款確認表單送出後如果按登出，畫面會整頁重新整理，剛剛「已確認」的
+ * 畫面狀態（純粹存在記憶體裡的 JS 變數，沒有持久化）就會不見，表單看起來
+ * 像是「又跑出來」。已經全部移除，讓 member.js 的版本當唯一登出邏輯來源。
  */
-function setupMobileLogoutButton() {
-    const logoutBtnMobile = document.getElementById('logout-btn-mobile');
-    
-    if (logoutBtnMobile) {
-        const newLogoutBtnMobile = logoutBtnMobile.cloneNode(true);
-        logoutBtnMobile.parentNode.replaceChild(newLogoutBtnMobile, logoutBtnMobile);
-        
-        newLogoutBtnMobile.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            // 關閉選單
-            if (window.toggleMenu && document.getElementById('main-nav').classList.contains('active')) {
-                window.toggleMenu();
-            }
-            
-            // 執行登出
-            handleLogout();
-        });
-    }
-}
-
-/**
- * 設置桌面版登出按鈕
- */
-function setupDesktopLogoutButton() {
-    const logoutBtn = document.getElementById('logout-btn');
-    
-    if (logoutBtn) {
-        const newLogoutBtn = logoutBtn.cloneNode(true);
-        logoutBtn.parentNode.replaceChild(newLogoutBtn, logoutBtn);
-        
-        newLogoutBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            handleLogout();
-        });
-    }
-}
-
-/**
- * 處理登出操作
- */
-function handleLogout() {
-    if (CommonModule.firebase) {
-        CommonModule.firebase.signOut(CommonModule.firebase.auth)
-            .then(() => {
-                console.log('登出成功');
-                location.reload();
-            })
-            .catch((error) => {
-                console.error('登出錯誤', error);
-            });
-    } else {
-        console.log('Firebase服務未初始化，執行模擬登出');
-        localStorage.removeItem('isLoggedIn');
-        location.reload();
-    }
-}
 
 /**
  * 同步手機版狀態（購物車數量和登入狀態）
