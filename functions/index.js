@@ -3,6 +3,7 @@ const { defineSecret } = require("firebase-functions/params");
 const { initializeApp } = require("firebase-admin/app");
 const logger = require("firebase-functions/logger");
 const { sendEmail } = require("./brevo");
+const { sendLineMessage } = require("./line-messaging");
 
 initializeApp();
 
@@ -10,6 +11,7 @@ initializeApp();
 exports.lineLoginCallback = require("./line-login").lineLoginCallback;
 
 const BREVO_API_KEY = defineSecret("BREVO_API_KEY");
+const LINE_CHANNEL_ACCESS_TOKEN = defineSecret("LINE_CHANNEL_ACCESS_TOKEN");
 
 function formatCurrency(amount) {
     return `NT$ ${Number(amount || 0).toLocaleString("zh-TW")}`;
@@ -75,13 +77,54 @@ async function sendOrderEmail({ order, subject, bodyHtml, logLabel, orderId }) {
     }
 }
 
+function buildItemsText(items) {
+    return (Array.isArray(items) ? items : [])
+        .map((item) => `・${item.name} x${item.quantity}`)
+        .join("\n");
+}
+
+// 訂單的 userId 只有登入結帳才會有，而且格式是 line:<LINE userId>，這是
+// functions/line-login.js 建立 Firebase 使用者時固定加的前綴。訪客結帳、
+// 或用 Google/Facebook/電話/信箱登入結帳的訂單，這裡一律回傳 null，
+// 略過 LINE 推播、只寄 Email，不會出錯。
+function getLineUserId(order) {
+    const userId = order?.userId;
+    if (typeof userId === "string" && userId.startsWith("line:")) {
+        return userId.slice("line:".length);
+    }
+    return null;
+}
+
+// LINE 推播失敗（最常見原因：這個人根本沒加官方帳號好友，LINE 平台規定
+// 只能推播給好友）不能讓整個通知流程跟著失敗——Email 該寄還是要寄出去，
+// 所以這裡自己收掉錯誤，只記 log，不往外拋。
+async function sendOrderLineMessage({ order, text, logLabel, orderId }) {
+    const lineUserId = getLineUserId(order);
+    if (!lineUserId) {
+        return;
+    }
+    try {
+        await sendLineMessage({
+            channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN.value(),
+            to: lineUserId,
+            text
+        });
+        logger.info(`${logLabel}（LINE）已推播`, { orderId });
+    } catch (error) {
+        logger.warn(`${logLabel}（LINE）推播失敗，可能是對方尚未加官方帳號好友`, {
+            orderId,
+            error: error.message
+        });
+    }
+}
+
 /**
  * 訂單建立時，寄送訂單明細＋付款提醒信給顧客。
  * 目前結帳頁只有 ATM 轉帳一種付款方式（24 小時內完成），所以提醒文字是固定的，
  * 不像多付款方式的網站需要依 payment 欄位分支。
  */
 exports.sendOrderConfirmationEmail = onDocumentCreated(
-    { document: "orders/{orderId}", secrets: [BREVO_API_KEY] },
+    { document: "orders/{orderId}", secrets: [BREVO_API_KEY, LINE_CHANNEL_ACCESS_TOKEN] },
     async (event) => {
         const order = event.data?.data();
         const orderId = event.params.orderId;
@@ -107,6 +150,22 @@ exports.sendOrderConfirmationEmail = onDocumentCreated(
             logLabel: "訂單成立通知信",
             orderId
         });
+
+        const lineText =
+            `感謝您的訂購，${order?.customer?.name}！\n\n` +
+            `訂單編號：${order?.orderNumber}\n` +
+            `${buildItemsText(order?.items)}\n\n` +
+            `商品小計：${formatCurrency(order?.subtotal)}\n` +
+            `運費：${formatCurrency(order?.shippingFee)}\n` +
+            `訂單總額：${formatCurrency(order?.total)}\n\n` +
+            `尚未付款：請於訂單成立後 24 小時內完成 ATM 轉帳，轉帳後請至「訂單記錄」回報匯款末五碼，我們確認後會盡快為您安排出貨。`;
+
+        await sendOrderLineMessage({
+            order,
+            text: lineText,
+            logLabel: "訂單成立通知",
+            orderId
+        });
     }
 );
 
@@ -125,7 +184,7 @@ exports.sendOrderConfirmationEmail = onDocumentCreated(
  * 評估成 false，不會無限觸發。
  */
 exports.sendOrderStatusEmail = onDocumentUpdated(
-    { document: "orders/{orderId}", secrets: [BREVO_API_KEY] },
+    { document: "orders/{orderId}", secrets: [BREVO_API_KEY, LINE_CHANNEL_ACCESS_TOKEN] },
     async (event) => {
         const before = event.data?.before?.data();
         const after = event.data?.after?.data();
@@ -152,6 +211,19 @@ exports.sendOrderStatusEmail = onDocumentUpdated(
                 logLabel: "匯款回報通知信",
                 orderId
             });
+
+            const lineText =
+                `已收到您的匯款回報\n\n` +
+                `${after.customer?.name} 您好，訂單 ${after.orderNumber} 的匯款回報已收到，` +
+                `我們會盡快核對入帳，確認後會安排出貨，出貨後會再通知您。\n\n` +
+                `訂單總額：${formatCurrency(after.total)}`;
+            await sendOrderLineMessage({
+                order: after,
+                text: lineText,
+                logLabel: "匯款回報通知",
+                orderId
+            });
+
             sentMarkers.paymentConfirmedEmailSentAt = new Date();
         }
 
@@ -173,6 +245,18 @@ exports.sendOrderStatusEmail = onDocumentUpdated(
                 logLabel: "出貨通知信",
                 orderId
             });
+
+            const lineText =
+                `您的訂單已出貨！\n\n` +
+                `${after.customer?.name} 您好，訂單 ${after.orderNumber} 已經出貨囉！\n\n` +
+                `${buildItemsText(after.items)}`;
+            await sendOrderLineMessage({
+                order: after,
+                text: lineText,
+                logLabel: "出貨通知",
+                orderId
+            });
+
             sentMarkers.shippedEmailSentAt = new Date();
         }
 
