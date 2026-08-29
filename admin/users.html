@@ -564,6 +564,7 @@
                         email: userData.email || '',
                         phone: userData.phone || '',
                         provider: userData.provider || 'email',
+                        lineUserId: userData.lineUserId || '',
                         city: userData.city || '',
                         district: userData.district || '',
                         address: userData.address || '',
@@ -667,11 +668,16 @@
                 if (user.lastLoginAt) {
                     lastLoginText = window.AdminCommon.formatDate(user.lastLoginAt, 'date');
                 }
-                
+
+                // LINE 登入沒有信箱，這一格改顯示 LINE ID，跟個人資料頁的處理方式一致
+                const emailCellText = user.provider === 'line'
+                    ? (user.lineUserId ? `LINE ID: ${window.AdminCommon.escapeHtml(user.lineUserId)}` : '未提供')
+                    : (window.AdminCommon.escapeHtml(user.email) || '未提供');
+
                 html += `
                     <tr data-user-id="${user.id}">
                         <td>${window.AdminCommon.escapeHtml(user.name) || '未填寫'}</td>
-                        <td>${window.AdminCommon.escapeHtml(user.email) || '未提供'}</td>
+                        <td>${emailCellText}</td>
                         <td>${window.AdminCommon.escapeHtml(user.phone) || '未提供'}</td>
                         <td>${formatProviderBadge(user.provider)}</td>
                         <td>${createdDate}</td>
