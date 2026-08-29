@@ -167,6 +167,7 @@
                             <div class="user-links">
                                 <a href="profile.html"><i class="fas fa-user"></i> 會員資料</a>
                                 <a href="orders.html"><i class="fas fa-shopping-bag"></i> 訂單記錄</a>
+                                <a href="messages.html"><i class="fas fa-envelope"></i> 我的訊息</a>
                                 <!-- 添加管理員按鈕，預設隱藏 -->
                                 <a href="admin/dashboard.html" id="admin-btn-mobile" class="admin-link" style="display: none;"><i class="fas fa-cog"></i> 系統管理</a>
                                 <a href="#" id="logout-btn-mobile"><i class="fas fa-sign-out-alt"></i> 登出</a>
@@ -201,6 +202,7 @@
                     <div class="user-menu" id="user-menu">
                         <a href="profile.html"><i class="fas fa-user"></i> 會員資料</a>
                         <a href="orders.html"><i class="fas fa-shopping-bag"></i> 訂單記錄</a>
+                        <a href="messages.html"><i class="fas fa-envelope"></i> 我的訊息</a>
                         <!-- 添加管理員按鈕，預設隱藏 -->
                         <a href="admin/dashboard.html" id="admin-btn" class="admin-link" style="display: none;"><i class="fas fa-cog"></i> 系統管理</a>
                         <a href="#" id="logout-btn"><i class="fas fa-sign-out-alt"></i> 登出</a>
@@ -662,8 +664,8 @@ function initContactForm() {
         messageEl.className = 'contact-form-message';
 
         try {
-            const { db, collection, addDoc, serverTimestamp } = window.firebaseServices;
-            await addDoc(collection(db, 'messages'), {
+            const { db, collection, addDoc, serverTimestamp, auth } = window.firebaseServices;
+            const messageData = {
                 name,
                 phone,
                 email,
@@ -671,7 +673,13 @@ function initContactForm() {
                 message,
                 read: false,
                 createdAt: serverTimestamp()
-            });
+            };
+            // 有登入的話記錄 userId，之後才能在「我的訊息」頁面查到自己送出過的訊息；
+            // 訪客送出的訊息沒有 userId，正常（訪客本來就沒有帳號可以回頭查看）
+            if (auth?.currentUser) {
+                messageData.userId = auth.currentUser.uid;
+            }
+            await addDoc(collection(db, 'messages'), messageData);
 
             messageEl.textContent = '留言已送出，我們會盡快與您聯繫！';
             messageEl.className = 'contact-form-message success';

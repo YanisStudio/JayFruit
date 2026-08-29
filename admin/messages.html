@@ -256,6 +256,44 @@
             white-space: pre-wrap;
         }
 
+        .message-reply-section {
+            margin-bottom: 15px;
+        }
+
+        .message-reply {
+            background-color: #e8f5e9;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 3px solid #2e7d32;
+            margin-bottom: 10px;
+        }
+
+        .message-reply h4 {
+            margin: 0 0 8px 0;
+            font-size: 14px;
+            color: #2e7d32;
+        }
+
+        .message-reply p {
+            margin: 0;
+            color: #333;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        .reply-textarea {
+            width: 100%;
+            min-height: 70px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 14px;
+            resize: vertical;
+            box-sizing: border-box;
+            margin-bottom: 8px;
+        }
+
         .message-actions {
             display: flex;
             justify-content: flex-end;
@@ -275,7 +313,8 @@
 
         /* 訊息操作按鈕樣式 */
         .mark-read-btn,
-        .delete-btn {
+        .delete-btn,
+        .reply-btn {
             padding: 8px 16px;
             border-radius: 6px;
             font-size: 14px;
@@ -318,8 +357,19 @@
             transform: translateY(-1px);
         }
 
+        .reply-btn {
+            background-color: #2196f3;
+            color: white;
+        }
+
+        .reply-btn:hover {
+            background-color: #1e88e5;
+            transform: translateY(-1px);
+        }
+
         .mark-read-btn i,
-        .delete-btn i {
+        .delete-btn i,
+        .reply-btn i {
             margin-right: 6px;
         }
 
@@ -487,6 +537,23 @@
                         formattedDate = window.AdminCommon.formatDate(new Date(timestamp), 'full');
                     }
 
+                    // 回覆時間戳記
+                    let repliedTimestamp = messageData.repliedAt;
+                    let repliedFormattedDate = '';
+                    if (repliedTimestamp && repliedTimestamp.toDate) {
+                        repliedFormattedDate = window.AdminCommon.formatDate(repliedTimestamp, 'full');
+                    } else if (repliedTimestamp) {
+                        repliedFormattedDate = window.AdminCommon.formatDate(new Date(repliedTimestamp), 'full');
+                    }
+
+                    const hasReply = !!messageData.reply;
+                    const replyDisplayHTML = hasReply ? `
+                        <div class="message-reply">
+                            <h4><i class="fas fa-reply"></i> 商家回覆${repliedFormattedDate ? `（${repliedFormattedDate}）` : ''}</h4>
+                            <p>${escapeHtml(messageData.reply)}</p>
+                        </div>
+                    ` : '';
+
                     // 客戶填寫的姓名/信箱/電話/主旨/內容都要跳脫，避免留言板 Stored XSS
                     const messageItem = document.createElement('div');
                     messageItem.className = `message-item ${messageData.read ? 'read' : 'unread'}`;
@@ -502,6 +569,13 @@
                         </div>
                         <div class="message-content">
                             <p>${escapeHtml(messageData.message)}</p>
+                        </div>
+                        <div class="message-reply-section">
+                            ${replyDisplayHTML}
+                            <textarea class="reply-textarea" data-id="${messageId}" placeholder="輸入回覆內容...">${escapeHtml(messageData.reply || '')}</textarea>
+                            <button class="reply-btn" data-id="${messageId}">
+                                <i class="fas fa-paper-plane"></i> ${hasReply ? '更新回覆' : '送出回覆'}
+                            </button>
                         </div>
                         <div class="message-actions">
                             <button class="mark-read-btn ${messageData.read ? 'btn-outline' : ''}" data-id="${messageId}">
@@ -551,6 +625,42 @@
                     }
                 });
             });
+
+            // 回覆功能
+            document.querySelectorAll('.reply-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const messageId = this.getAttribute('data-id');
+                    const textarea = document.querySelector(`.reply-textarea[data-id="${messageId}"]`);
+                    const replyText = textarea ? textarea.value.trim() : '';
+                    if (!replyText) {
+                        window.AdminCommon.showToast('回覆內容不能為空', 'warning');
+                        return;
+                    }
+                    submitReply(messageId, replyText);
+                });
+            });
+        };
+
+        // 送出/更新回覆
+        const submitReply = async function(messageId, replyText) {
+            try {
+                const db = window.firebaseServices.db;
+                const doc = window.firebaseServices.doc;
+                const updateDoc = window.firebaseServices.updateDoc;
+                const serverTimestamp = window.firebaseServices.serverTimestamp;
+
+                const messageDocRef = doc(db, 'messages', messageId);
+                await updateDoc(messageDocRef, {
+                    reply: replyText,
+                    repliedAt: serverTimestamp()
+                });
+
+                window.AdminCommon.showToast('回覆已送出', 'success');
+                loadMessages(); // 重新加載訊息列表
+            } catch (error) {
+                console.error('送出回覆時出錯:', error);
+                window.AdminCommon.handleError(error, '送出回覆');
+            }
         };
 
         // 切換訊息已讀/未讀狀態
