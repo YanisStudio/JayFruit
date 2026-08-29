@@ -669,9 +669,12 @@
                     lastLoginText = window.AdminCommon.formatDate(user.lastLoginAt, 'date');
                 }
 
-                // LINE 登入沒有信箱，這一格改顯示 LINE ID，跟個人資料頁的處理方式一致
+                // LINE 登入沒有信箱，這一格改顯示 LINE 的暱稱——user.name 對 LINE 使用者
+                // 來說，第一次登入時就是存 LINE 當下回報的暱稱，之後除非本人自己在
+                // 個人資料頁改過，不然就是 LINE 暱稱本身（注意這裡是 user.name 本身，
+                // 上面組資料時已經把空值預設成「未設置姓名」，所以一定有值可顯示）
                 const emailCellText = user.provider === 'line'
-                    ? (user.lineUserId ? `LINE ID: ${window.AdminCommon.escapeHtml(user.lineUserId)}` : '未提供')
+                    ? window.AdminCommon.escapeHtml(user.name)
                     : (window.AdminCommon.escapeHtml(user.email) || '未提供');
 
                 html += `
