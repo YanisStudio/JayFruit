@@ -1052,7 +1052,9 @@ async function loadUserOrders(user) {
                 window.firebaseServices.collection(window.firebaseServices.db, 'orders'),
                 window.firebaseServices.where('userId', '==', user.uid)
             );
-            const userIdSnapshot = await window.firebaseServices.getDocs(userIdQuery);
+            // 用 getDocsFromServer 而不是 getDocs：連線不穩時 getDocs 會悄悄退回
+            // 本地空快取，讓這裡誤判成「這個人沒有訂單」，跟商品頁踩過的同一個坑
+            const userIdSnapshot = await window.firebaseServices.getDocsFromServer(userIdQuery);
             
             userIdSnapshot.forEach(doc => {
                 const orderData = doc.data();
@@ -1072,7 +1074,7 @@ async function loadUserOrders(user) {
                 window.firebaseServices.collection(window.firebaseServices.db, 'orders'),
                 window.firebaseServices.where(searchField, '==', searchValue)
             );
-            const fieldSnapshot = await window.firebaseServices.getDocs(fieldQuery);
+            const fieldSnapshot = await window.firebaseServices.getDocsFromServer(fieldQuery);
             
             fieldSnapshot.forEach(doc => {
                 const orderData = doc.data();
@@ -1091,7 +1093,7 @@ async function loadUserOrders(user) {
             // 方法3：備用查詢 - 獲取所有訂單並手動篩選
             console.log('使用備用查詢方法...');
             try {
-                const allOrdersSnapshot = await window.firebaseServices.getDocs(
+                const allOrdersSnapshot = await window.firebaseServices.getDocsFromServer(
                     window.firebaseServices.collection(window.firebaseServices.db, 'orders')
                 );
                 

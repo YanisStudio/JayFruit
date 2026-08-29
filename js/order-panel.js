@@ -162,12 +162,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     q = window.firebaseServices.query(ordersCollectionRef, 
                         window.firebaseServices.orderBy('orderDate', 'desc'));
                 } else {
-                    q = window.firebaseServices.query(ordersCollectionRef, 
+                    q = window.firebaseServices.query(ordersCollectionRef,
                         window.firebaseServices.where('status', '==', exportRange));
                 }
-                
-                const querySnapshot = await window.firebaseServices.getDocs(q);
-                
+
+                // 用 getDocsFromServer：連線不穩時 getDocs 可能悄悄退回本地空快取，
+                // 讓匯出結果漏單卻不會有任何錯誤提示
+                const querySnapshot = await window.firebaseServices.getDocsFromServer(q);
+
                 if (querySnapshot.empty) {
                     window.AdminCommon.showToast('沒有找到符合條件的訂單', 'warning');
                     blackcatExportModal.classList.remove('active');
@@ -317,12 +319,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     q = window.firebaseServices.query(ordersCollectionRef, 
                         window.firebaseServices.orderBy('orderDate', 'desc'));
                 } else {
-                    q = window.firebaseServices.query(ordersCollectionRef, 
+                    q = window.firebaseServices.query(ordersCollectionRef,
                         window.firebaseServices.where('status', '==', exportRange));
                 }
-                
-                const querySnapshot = await window.firebaseServices.getDocs(q);
-                
+
+                // 用 getDocsFromServer：連線不穩時 getDocs 可能悄悄退回本地空快取，
+                // 讓匯出結果漏單卻不會有任何錯誤提示
+                const querySnapshot = await window.firebaseServices.getDocsFromServer(q);
+
                 if (querySnapshot.empty) {
                     window.AdminCommon.showToast('沒有找到符合條件的訂單', 'warning');
                     excelExportModal.classList.remove('active');
@@ -454,7 +458,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         window.firebaseServices.where('status', '==', statusValue));
                 }
                 
-                window.firebaseServices.getDocs(q)
+                // 用 getDocsFromServer：連線不穩時 getDocs 會悄悄退回本地空快取，
+                // 讓後臺誤判成「沒有訂單」，實際上可能有一堆訂單等著處理卻沒顯示出來
+                window.firebaseServices.getDocsFromServer(q)
                     .then((querySnapshot) => {
                         if (querySnapshot.empty) {
                             orderList.innerHTML = '<p class="no-orders">沒有找到訂單</p>';
