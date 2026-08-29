@@ -1538,15 +1538,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 const lastUpdate = localStorage.getItem('lastLoginUpdate');
                 const now = Date.now();
                 if (!lastUpdate || (now - parseInt(lastUpdate)) > 3600000) {
-                    setDoc(doc(window.firebaseServices.db, 'users', user.uid), {
-                        lastLoginAt: serverTimestamp()
-                    }, { merge: true })
-                    .then(() => {
-                        localStorage.setItem('lastLoginUpdate', now.toString());
-                    })
-                    .catch(error => {
-                        console.warn('更新最後登入時間失敗:', error);
-                    });
+                    const lastLoginDocRef = doc(window.firebaseServices.db, 'users', user.uid);
+                    // 先確認文件已經存在才更新，不要用 setDoc({merge:true}) 直接寫——
+                    // 這段登入時一定會跑，跟下面 saveUserToFirestore() 建立新用戶
+                    // 資料是同時觸發的兩段非同步流程，如果這裡搶先執行，會用「只有
+                    // lastLoginAt 一個欄位」的內容把文件建立起來，導致
+                    // saveUserToFirestore() 之後誤判成「已存在的舊會員」而不去
+                    // 補上姓名等預設欄位（新用戶第一次登入時的競爭條件，LINE 登入
+                    // 已經實際踩到過一次：姓名變成空的，只能顯示「用戶」）
+                    getDoc(lastLoginDocRef)
+                        .then((docSnap) => {
+                            if (!docSnap.exists()) return;
+                            return setDoc(lastLoginDocRef, { lastLoginAt: serverTimestamp() }, { merge: true });
+                        })
+                        .then(() => {
+                            localStorage.setItem('lastLoginUpdate', now.toString());
+                        })
+                        .catch(error => {
+                            console.warn('更新最後登入時間失敗:', error);
+                        });
                 }
 
                 // 從 Firestore 獲取用戶資料

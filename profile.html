@@ -547,7 +547,7 @@
                                         <input type="text" id="name" name="name" required>
                                     </div>
                                     <div class="form-group">
-                                        <label for="email">電子郵件</label>
+                                        <label for="email" id="email-label">電子郵件</label>
                                         <input type="email" id="email" name="email">
                                         <div class="provider-info" id="email-provider-info" style="display: none;">
                                             <span class="provider-badge" id="email-provider-badge"></span>
@@ -655,25 +655,26 @@
             : null;
         
         // 強化版欄位權限設定
-        function setFieldPermissions(provider) {
+        function setFieldPermissions(provider, userData) {
             console.log('=== 強化版權限設定 ===');
             console.log('註冊方式:', provider);
-            
+
             // 等待DOM完全加載
             setTimeout(() => {
                 const emailField = document.getElementById('email');
                 const phoneField = document.getElementById('phone');
+                const emailLabel = document.getElementById('email-label');
                 const emailProviderInfo = document.getElementById('email-provider-info');
                 const phoneProviderInfo = document.getElementById('phone-provider-info');
                 const emailProviderBadge = document.getElementById('email-provider-badge');
                 const emailReadonlyNote = document.getElementById('email-readonly-note');
                 const phoneReadonlyNote = document.getElementById('phone-readonly-note');
-                
+
                 if (!emailField || !phoneField) {
                     console.error('欄位元素未找到');
                     return;
                 }
-                
+
                 // 重置所有欄位權限
                 emailField.removeAttribute('readonly');
                 phoneField.removeAttribute('readonly');
@@ -681,6 +682,8 @@
                 phoneField.classList.remove('field-readonly');
                 emailField.style.backgroundColor = '';
                 phoneField.style.backgroundColor = '';
+                emailField.type = 'email';
+                if (emailLabel) emailLabel.textContent = '電子郵件';
                 emailProviderInfo.style.display = 'none';
                 phoneProviderInfo.style.display = 'none';
                 
@@ -719,13 +722,17 @@
                         break;
                         
                     case 'line':
-                        // LINE 登入沒有申請 email 權限，這裡的 email 欄位本來就是空的，
-                        // 但還是鎖起來、顯示 LINE 徽章，跟 Google/Facebook 鎖 email
-                        // 欄位是同一套處理方式，讓使用者清楚知道帳號是用 LINE 登入的
-                        console.log('設定 LINE 權限 - Email 唯讀');
+                        // LINE 登入沒有申請 email 權限，這個欄位原本會是空的，改成
+                        // 顯示 LINE ID 讓這格不要空著沒意義；順便把 type 從 email
+                        // 改成 text——LINE ID 不是信箱格式，readonly 的欄位瀏覽器
+                        // 還是會做格式驗證，用 type="email" 會在存檔時卡驗證錯誤
+                        console.log('設定 LINE 權限 - 顯示 LINE ID，唯讀');
+                        emailField.type = 'text';
+                        emailField.value = userData?.lineUserId || '';
                         emailField.setAttribute('readonly', true);
                         emailField.classList.add('field-readonly');
                         emailField.style.backgroundColor = '#f9f9f9';
+                        if (emailLabel) emailLabel.textContent = 'LINE ID';
                         emailProviderInfo.style.display = 'block';
                         emailProviderBadge.className = 'provider-badge line';
                         emailProviderBadge.innerHTML = '<i class="fab fa-line"></i> LINE 帳號';
@@ -851,7 +858,7 @@
                         // 使用資料庫中保存的提供者類型，如果沒有則使用檢測到的
                         const savedProvider = userData.provider || userProvider;
                         console.log('資料庫中的提供者:', savedProvider);
-                        setFieldPermissions(savedProvider);
+                        setFieldPermissions(savedProvider, userData);
                         
                     } else {
                         console.log('用戶資料不存在，將創建新的用戶資料');
@@ -881,6 +888,14 @@
                             updatedAt: firebaseServices.serverTimestamp()
                         };
 
+                        // LINE 使用者沒有 email，這條備援路徑不知道 lineUserId 存在
+                        // initialUserData 的哪裡（正常情況下 member.js 的
+                        // saveUserToFirestore 應該已經先建立好完整資料，走不到這裡；
+                        // 這裡只是防禦性處理，直接從 uid 反推）
+                        if (userProvider === 'line') {
+                            initialUserData.lineUserId = uid.replace(/^line:/, '');
+                        }
+
                         // 立即保存到 Firestore
                         // 用 merge:true：避免跟 member.js 的 saveUserToFirestore（同時可能在更新
                         // lastLoginAt）互相搶寫、整份覆蓋掉對方剛寫入的欄位，導致 lastLoginAt 遺失
@@ -889,20 +904,22 @@
                         firebaseServices.setDoc(userDocRef, initialUserData, { merge: true })
                             .then(() => {
                                 console.log('新用戶資料已創建，註冊方式:', userProvider);
-                                setFieldPermissions(userProvider);
+                                setFieldPermissions(userProvider, initialUserData);
                             })
                             .catch((error) => {
                                 console.error('創建用戶資料失敗:', error);
-                                setFieldPermissions(userProvider);
+                                setFieldPermissions(userProvider, initialUserData);
                             });
                     }
                 })
                 .catch((error) => {
                     console.error('獲取用戶資料時出錯:', error);
                     showMessage(profileMessage, '獲取用戶資料時出錯: ' + error.message, 'error');
-                    
+
                     // 即使出錯也要設定基本權限
-                    setFieldPermissions(userProvider);
+                    setFieldPermissions(userProvider, {
+                        lineUserId: userProvider === 'line' ? user.uid.replace(/^line:/, '') : ''
+                    });
                 });
         }
         
