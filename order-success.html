@@ -955,8 +955,17 @@
                 try {
                     const orderDocRef = window.firebaseServices.doc(window.firebaseServices.db, 'orders', effectiveOrderId);
                     const orderDocSnap = await window.firebaseServices.getDocFromServer(orderDocRef);
-                    if (orderDocSnap.exists() && orderDocSnap.data().paymentConfirmed) {
-                        isTransferConfirmed = true;
+                    if (orderDocSnap.exists()) {
+                        const orderFieldsSnap = orderDocSnap.data();
+                        // 加購差價的付款狀態存在 addonPaymentConfirmed，不是 paymentConfirmed
+                        // （一般訂單那個欄位這時候通常早就是 true 了，跟加購差價繳了沒無關）
+                        if (isAddon && priceDifference > 0) {
+                            if (orderFieldsSnap.addonPaymentConfirmed === true) {
+                                isTransferConfirmed = true;
+                            }
+                        } else if (orderFieldsSnap.paymentConfirmed) {
+                            isTransferConfirmed = true;
+                        }
                     }
                 } catch (error) {
                     console.warn('查詢訂單付款狀態失敗，先當作尚未確認處理:', error);
@@ -1128,11 +1137,19 @@
                                             const updatedNotes = existingNotes ? existingNotes + '\n\n' + paymentNote : paymentNote;
                                             
                                             // 更新訂單備註
-                                            await window.firebaseServices.updateDoc(orderDocRef, { 
-                                                notes: updatedNotes,
-                                                paymentConfirmed: true,
-                                                paymentConfirmTime: window.firebaseServices.serverTimestamp()
-                                            });
+                                            // 加購差價的付款狀態獨立寫 addonPaymentConfirmed，不要沿用
+                                            // paymentConfirmed——一般訂單這時候通常早就已經是 true 了
+                                            // （已經確認過原本的付款），沿用同一個欄位不會發生
+                                            // false→true 的轉變，後台的匯款回報通知就不會寄出
+                                            const paymentUpdate = { notes: updatedNotes };
+                                            if (isAddon && priceDifference > 0) {
+                                                paymentUpdate.addonPaymentConfirmed = true;
+                                                paymentUpdate.addonPaymentConfirmTime = window.firebaseServices.serverTimestamp();
+                                            } else {
+                                                paymentUpdate.paymentConfirmed = true;
+                                                paymentUpdate.paymentConfirmTime = window.firebaseServices.serverTimestamp();
+                                            }
+                                            await window.firebaseServices.updateDoc(orderDocRef, paymentUpdate);
                                             
                                             console.log('匯款確認已成功記錄並更新至訂單備註');
                                         } else {

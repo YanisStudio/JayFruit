@@ -134,9 +134,7 @@ exports.sendOrderConfirmationEmail = onDocumentCreated(
             <p>我們已經收到您的訂單，以下是訂單明細：</p>
             <p><b>訂單編號：</b>${escapeHtml(order?.orderNumber)}</p>
             ${buildItemsTable(order?.items)}
-            <p>商品小計：${formatCurrency(order?.subtotal)}</p>
-            <p>運費：${formatCurrency(order?.shippingFee)}</p>
-            <p style="font-size:1.1em;"><b>訂單總額：${formatCurrency(order?.total)}</b></p>
+            <p style="font-size:1.2em;"><b>訂單總額：${formatCurrency(order?.total)}</b></p>
             <div style="background:#fff8e1;padding:12px;border-radius:6px;margin:16px 0;">
                 <p style="margin:0;"><b>尚未付款：</b>請於訂單成立後 24 小時內完成 ATM 轉帳，轉帳後請至「訂單記錄」回報匯款末五碼，我們確認後會盡快為您安排出貨。</p>
             </div>
@@ -155,8 +153,6 @@ exports.sendOrderConfirmationEmail = onDocumentCreated(
             `感謝您的訂購，${order?.customer?.name}！\n\n` +
             `訂單編號：${order?.orderNumber}\n` +
             `${buildItemsText(order?.items)}\n\n` +
-            `商品小計：${formatCurrency(order?.subtotal)}\n` +
-            `運費：${formatCurrency(order?.shippingFee)}\n` +
             `訂單總額：${formatCurrency(order?.total)}\n\n` +
             `尚未付款：請於訂單成立後 24 小時內完成 ATM 轉帳，轉帳後請至「訂單記錄」回報匯款末五碼，我們確認後會盡快為您安排出貨。`;
 
@@ -175,8 +171,12 @@ exports.sendOrderConfirmationEmail = onDocumentCreated(
  *   （這是顧客自己在 order-success.html 回報匯款末五碼時觸發的，不是後台人員
  *   已經核對過帳戶入帳的意思，所以信件文字寫「回報」「確認中」，不能寫成
  *   「已確認收到款項」，避免給顧客錯誤的保證）
+ * - addonPaymentConfirmed 第一次從 false/undefined 變 true → 寄「已收到加購差價
+ *   匯款回報」信。這個欄位跟 paymentConfirmed 是分開的：加購當下原訂單通常
+ *   早就已經確認付款過了（paymentConfirmed 已經是 true），如果加購差價回報
+ *   也沿用同一個欄位，就偵測不到「這次差價回報了」這個轉變，通知會漏寄
  * - status 第一次變成 shipped → 寄出貨通知信
- * 兩個條件各自獨立判斷，同一次更新如果剛好兩個條件都成立，兩封都會寄。
+ * 三個條件各自獨立判斷，同一次更新如果剛好多個條件都成立，會各自寄各自的信。
  *
  * 各自用一個 xxxEmailSentAt 欄位記錄「這封信寄過了」，避免管理員後台把狀態
  * 改來改去時同一封信被重複寄送。這裡會反寫回同一張訂單，寫回本身也會再
@@ -225,6 +225,49 @@ exports.sendOrderStatusEmail = onDocumentUpdated(
             });
 
             sentMarkers.paymentConfirmedEmailSentAt = new Date();
+        }
+
+        // 加購差價匯款回報，跟一般訂單的匯款回報是獨立的欄位（addonPaymentConfirmed
+        // 而不是 paymentConfirmed）——加購當下原訂單的 paymentConfirmed 通常早就是
+        // true 了，沿用同一個欄位偵測不到「這次加購差價回報了」這件事
+        const justReportedAddonPayment =
+            before?.addonPaymentConfirmed !== true &&
+            after.addonPaymentConfirmed === true &&
+            !after.addonPaymentConfirmedEmailSentAt;
+        if (justReportedAddonPayment) {
+            const latestAddon = Array.isArray(after.addonHistory) && after.addonHistory.length > 0
+                ? after.addonHistory[after.addonHistory.length - 1]
+                : null;
+            const addonAmount = latestAddon?.priceDifference;
+            const addonAmountLine = typeof addonAmount === "number" ? formatCurrency(addonAmount) : null;
+
+            const bodyHtml = `
+                <h2 style="color:#2e7d4f;">我們已收到您的加購差價匯款回報</h2>
+                <p>${escapeHtml(after.customer?.name)} 您好，訂單 <b>${escapeHtml(after.orderNumber)}</b> 的加購差價匯款回報已收到，我們會盡快核對入帳，確認後會將加購商品一併安排出貨。</p>
+                ${addonAmountLine ? `<p style="font-size:1.2em;"><b>加購差價：${addonAmountLine}</b></p>` : ""}
+                <p style="margin-top:24px;color:#777;font-size:0.9em;">如果核對上有任何問題，我們會另外與您聯繫。</p>
+            `;
+            await sendOrderEmail({
+                order: after,
+                subject: `【杰の御果園】已收到加購差價匯款回報 - ${after.orderNumber}`,
+                bodyHtml,
+                logLabel: "加購差價匯款回報通知信",
+                orderId
+            });
+
+            const lineText =
+                `已收到您的加購差價匯款回報\n\n` +
+                `${after.customer?.name} 您好，訂單 ${after.orderNumber} 的加購差價匯款回報已收到，` +
+                `我們會盡快核對入帳，確認後會將加購商品一併安排出貨。` +
+                (addonAmountLine ? `\n\n加購差價：${addonAmountLine}` : "");
+            await sendOrderLineMessage({
+                order: after,
+                text: lineText,
+                logLabel: "加購差價匯款回報通知",
+                orderId
+            });
+
+            sentMarkers.addonPaymentConfirmedEmailSentAt = new Date();
         }
 
         const justShipped =

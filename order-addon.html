@@ -1615,11 +1615,21 @@
                         addonRecord
                     ],
                     // 將加購記錄添加到備註中
-                    notes: originalOrder.notes ? 
-                        originalOrder.notes + '\n\n' + addonNote : 
+                    notes: originalOrder.notes ?
+                        originalOrder.notes + '\n\n' + addonNote :
                         addonNote,
                     lastModified: window.firebaseServices.serverTimestamp()
                 };
+
+                // 有差價要補，加購差價的付款狀態要獨立追蹤，不能沿用原訂單的
+                // paymentConfirmed——這裡通常原訂單早就已經是 true 了（訂單都
+                // 確認付款、甚至準備出貨才會臨時加購），如果沿用同一個欄位，
+                // 顧客之後在 order-success.html 回報差價匯款時，因為欄位本來就
+                // 是 true、不會發生「從 false 變 true」的轉變，後台的匯款回報
+                // 通知信/LINE 就不會寄出，等於加購差價回報了也沒人知道
+                if (priceDifference > 0) {
+                    updatedOrder.addonPaymentConfirmed = false;
+                }
 
                 // 更新訂單到 Firebase
                 await window.firebaseServices.updateDoc(
