@@ -997,7 +997,20 @@ function detectUserLoginMethod(user) {
         searchField = 'customer.phone';
         searchValue = user.phoneNumber.replace(/^\+886/, '0');
     }
-    
+
+    // 特殊情況：LINE 登入。LINE 是透過 Firebase Custom Token 登入（不是原生的
+    // Firebase 聯合登入 provider），user.providerData 會是空陣列，上面整段
+    // switch 都不會命中；LINE 帳號通常也沒有 email 可以拿來當查詢欄位，導致
+    // searchField/searchValue 兩個都是 null，讓呼叫端誤判成「無法識別用戶」，
+    // 連原本就會成功的 userId 查詢（loadUserOrders 的方法1）都沒機會跑就先擋掉。
+    // 改成直接拿 userId（也就是 user.uid）當查詢依據，反正跟方法1找到的訂單
+    // 一定重複，不影響結果，只是為了讓下面的欄位檢查不要提早擋下來
+    if (user.uid && user.uid.startsWith('line:')) {
+        loginMethod = 'line';
+        searchField = 'userId';
+        searchValue = user.uid;
+    }
+
     console.log('判定結果:', { loginMethod, searchField, searchValue });
     return { loginMethod, searchField, searchValue };
 }
