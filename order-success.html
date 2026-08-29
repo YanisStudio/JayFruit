@@ -53,9 +53,10 @@
         import { 
             initializeFirestore, 
             collection, 
-            doc, 
-            setDoc, 
+            doc,
+            setDoc,
             getDoc,
+            getDocFromServer,
             getDocs,
             getDocsFromServer,
             addDoc,
@@ -87,6 +88,7 @@
             doc,
             setDoc,
             getDoc,
+            getDocFromServer,
             updateDoc,  // 確保 updateDoc 被包含
             addDoc,
             increment,
@@ -925,7 +927,25 @@
             
             // 設置付款方式狀態
             isTransferPayment = (paymentMethod === 'transfer');
-            
+
+            // 如果是轉帳付款，要先查 Firestore 確認這筆訂單「這次載入之前」
+            // 是不是已經回報過匯款了——不能只憑這次頁面的記憶體變數判斷，
+            // 不然使用者重新整理頁面（或登出、上一頁再回來）時，畫面會看不出
+            // 已經填過，又跑出空白表單讓人以為要重填一次。
+            // 用 getDocFromServer 而不是 getDoc，避免本地快取還停在「舊訂單、
+            // 還沒確認」的狀態，把已經確認的訂單誤判成還沒確認。
+            if (isTransferPayment && orderId && window.firebaseServices) {
+                try {
+                    const orderDocRef = window.firebaseServices.doc(window.firebaseServices.db, 'orders', orderId);
+                    const orderDocSnap = await window.firebaseServices.getDocFromServer(orderDocRef);
+                    if (orderDocSnap.exists() && orderDocSnap.data().paymentConfirmed) {
+                        isTransferConfirmed = true;
+                    }
+                } catch (error) {
+                    console.warn('查詢訂單付款狀態失敗，先當作尚未確認處理:', error);
+                }
+            }
+
             // 從 sessionStorage 獲取訂單信息
             const lastOrderJSON = sessionStorage.getItem('lastOrder');
             
@@ -989,6 +1009,24 @@
             // 處理匯款確認表單
             const paymentConfirmForm = document.getElementById('payment-confirm-form');
             const confirmationMessage = document.getElementById('transfer-confirmation-message');
+
+            // 上面查到這筆訂單已經回報過匯款了，直接顯示「已回報」畫面，
+            // 不要再顯示空白表單——這裡沒有使用者當初填的末5碼/日期可以重現
+            // （那些只有存進訂單的 notes 文字裡，沒有拆成獨立欄位），
+            // 所以顯示的是通用訊息，不是像剛送出當下那樣的完整摘要
+            if (isTransferConfirmed && paymentConfirmForm && confirmationMessage) {
+                const confirmationFormWrap = document.getElementById('transfer-confirmation-form');
+                if (confirmationFormWrap) {
+                    confirmationFormWrap.classList.add('transfer-confirmed');
+                }
+                paymentConfirmForm.style.display = 'none';
+                confirmationMessage.innerHTML = `
+                    <div class="confirmed-info">
+                        <p class="confirmation-thankyou">我們已收到您的匯款回報，將盡快為您確認款項並安排出貨。</p>
+                    </div>
+                `;
+                confirmationMessage.style.display = 'block';
+            }
 
             if (paymentConfirmForm) {
                 paymentConfirmForm.addEventListener('submit', async function(e) {
