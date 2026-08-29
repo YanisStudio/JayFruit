@@ -185,6 +185,7 @@
                                 <th>姓名</th>
                                 <th>電子郵件</th>
                                 <th>電話</th>
+                                <th>登入方式</th>
                                 <th>註冊日期</th>
                                 <th>最後登入</th>
                                 <th>訂單數</th>
@@ -193,7 +194,7 @@
                         </thead>
                         <tbody id="users-list">
                             <tr class="placeholder-row">
-                                <td colspan="7" class="text-center">載入會員資料中...</td>
+                                <td colspan="8" class="text-center">載入會員資料中...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -472,7 +473,7 @@
                 const usersList = document.getElementById('users-list');
                 usersList.innerHTML = `
                     <tr class="placeholder-row">
-                        <td colspan="7" class="text-center">載入會員資料中...</td>
+                        <td colspan="8" class="text-center">載入會員資料中...</td>
                     </tr>
                 `;
                 
@@ -509,7 +510,7 @@
                 if (usersSnapshot.empty) {
                     usersList.innerHTML = `
                         <tr class="placeholder-row">
-                            <td colspan="7" class="text-center">
+                            <td colspan="8" class="text-center">
                                 <i class="fas fa-users" style="font-size: 48px; color: #ddd; margin-bottom: 16px; display: block;"></i>
                                 <p style="color: #666;">尚無會員資料</p>
                             </td>
@@ -562,6 +563,7 @@
                         name: userData.name || '未設置姓名',
                         email: userData.email || '',
                         phone: userData.phone || '',
+                        provider: userData.provider || 'email',
                         city: userData.city || '',
                         district: userData.district || '',
                         address: userData.address || '',
@@ -597,7 +599,7 @@
                 const usersList = document.getElementById('users-list');
                 usersList.innerHTML = `
                     <tr class="placeholder-row">
-                        <td colspan="7" class="text-center">
+                        <td colspan="8" class="text-center">
                             <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #f44336; margin-bottom: 16px; display: block;"></i>
                             <h3 style="color: #666; margin: 16px 0 8px 0;">載入會員資料失敗</h3>
                             <p style="color: #999; font-size: 14px;">${error.message}</p>
@@ -610,6 +612,20 @@
             }
         };
         
+        // 依登入方式顯示對應的圖示徽章，方便客服快速辨識這個會員是怎麼登入的
+        // （例如 LINE 登入的會員沒有信箱可以聯絡，只能靠 LINE 或電話）
+        const formatProviderBadge = function(provider) {
+            const badges = {
+                line: { icon: 'fab fa-line', label: 'LINE', color: '#06c755' },
+                google: { icon: 'fab fa-google', label: 'Google', color: '#4285f4' },
+                facebook: { icon: 'fab fa-facebook-f', label: 'Facebook', color: '#1877f2' },
+                phone: { icon: 'fas fa-phone', label: '電話', color: '#f57c00' },
+                email: { icon: 'fas fa-envelope', label: '信箱', color: '#7b1fa2' }
+            };
+            const badge = badges[provider] || badges.email;
+            return `<span style="color:${badge.color};white-space:nowrap;"><i class="${badge.icon}"></i> ${badge.label}</span>`;
+        };
+
         // 更新統計數據
         const updateStats = function(total, active, newUsers, purchasing) {
             document.getElementById('total-users').textContent = total;
@@ -631,7 +647,7 @@
             if (currentUsers.length === 0) {
                 usersList.innerHTML = `
                     <tr class="placeholder-row">
-                        <td colspan="7" class="text-center">
+                        <td colspan="8" class="text-center">
                             <i class="fas fa-search" style="font-size: 48px; color: #ddd; margin-bottom: 16px; display: block;"></i>
                             <p style="color: #666;">無符合條件的會員資料</p>
                         </td>
@@ -657,6 +673,7 @@
                         <td>${window.AdminCommon.escapeHtml(user.name) || '未填寫'}</td>
                         <td>${window.AdminCommon.escapeHtml(user.email) || '未提供'}</td>
                         <td>${window.AdminCommon.escapeHtml(user.phone) || '未提供'}</td>
+                        <td>${formatProviderBadge(user.provider)}</td>
                         <td>${createdDate}</td>
                         <td>${lastLoginText}</td>
                         <td>${user.orderCount}</td>

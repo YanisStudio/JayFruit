@@ -695,7 +695,9 @@ document.addEventListener('DOMContentLoaded', function() {
         RecaptchaVerifier,
         signInWithPhoneNumber,
         PhoneAuthProvider,
-        signInWithCredential
+        signInWithCredential,
+        // LINE 登入相關函數
+        signInWithCustomToken
     } = window.firebaseServices || {};
 
     // 全局變量儲存確認結果
@@ -997,11 +999,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (provider === 'phone') {
                     userData.name = ''; // 讓用戶自己填寫姓名
                     userData.phone = phoneNumber; // 電話號碼放在 phone 欄位
+                } else if (provider === 'line') {
+                    // LINE 登入目前沒有申請 email 權限，email 欄位會是空的是
+                    // 預期中的行為（純粹拿 LINE 帳號登入/收通知用，要用信箱
+                    // 相關功能的人本來就會改走信箱登入）。額外存一份不帶
+                    // "line:" 前綴的 LINE userId，讓 email 是空的時候還有
+                    // 明確的識別依據可以用
+                    userData.name = displayName;
+                    userData.phone = '';
+                    userData.lineUserId = user.uid.replace(/^line:/, '');
                 } else {
                     userData.name = displayName; // Google/Facebook 的顯示名稱
                     userData.phone = ''; // 其他登入方式 phone 欄位為空
                 }
-                
+
                 await setDoc(userRef, userData);
                 console.log('新用戶資料已保存:', userData);
             } else {
@@ -1015,7 +1026,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (provider === 'phone') {
                     updateData.phone = phoneNumber;
                 }
-                
+
+                // 如果是 LINE 登入，補上 lineUserId（避免舊帳號在加這個特例
+                // 之前建立的、還沒有這個欄位）
+                if (provider === 'line') {
+                    updateData.lineUserId = user.uid.replace(/^line:/, '');
+                }
+
                 await setDoc(userRef, updateData, { merge: true });
                 
                 // 如果 Firestore 中有更完整的用戶名，使用 Firestore 的
@@ -1209,7 +1226,102 @@ document.addEventListener('DOMContentLoaded', function() {
             handleAuthError(error, 'Facebook 登入失敗');
         }
     }
-    
+
+    // LINE 登入功能實現。
+    // LINE 不是 Firebase Auth 內建支援的登入方式，所以不能像 Google/Facebook
+    // 那樣直接 signInWithPopup(auth, provider)。改成：開一個彈窗導去 LINE 的
+    // 授權頁面 → 使用者在 LINE 那邊完成授權 → LINE 導回我們的 Cloud Function
+    // （functions/line-login.js）→ Cloud Function 跟 LINE 換使用者資料、
+    // 發一組 Firebase Custom Token → 用 postMessage 把 token 傳回這個彈窗的
+    // 開啟者（也就是這個分頁）→ 這裡收到後呼叫 signInWithCustomToken() 完成登入
+    function handleLineLogin() {
+        if (!signInWithCustomToken) {
+            showMemberErrorModal('功能未啟用', 'LINE 登入功能未啟用，請聯繫網站管理員。');
+            return;
+        }
+
+        const LINE_LOGIN_CHANNEL_ID = '2011319370';
+        const REDIRECT_URI = 'https://us-central1-jayfruit-9dfab.cloudfunctions.net/lineLoginCallback';
+        const CLOUD_FUNCTION_ORIGIN = 'https://us-central1-jayfruit-9dfab.cloudfunctions.net';
+
+        const clickedBtn = document.getElementById('line-login-btn');
+        if (clickedBtn) clickedBtn.disabled = true;
+
+        // state 只做基本的隨機值紀錄，不是完整的 CSRF 防護——這個彈窗流程沒有
+        // 伺服器端 session 可以拿來核對 state 是否一致，真正的安全性來自於
+        // 授權碼交換那一步一定要有 Channel secret 才能完成，且只能在我們
+        // 自己的 Cloud Function（server-to-server）裡進行
+        const state = Math.random().toString(36).slice(2);
+        const authorizeUrl = 'https://access.line.me/oauth2/v2.1/authorize?' + new URLSearchParams({
+            response_type: 'code',
+            client_id: LINE_LOGIN_CHANNEL_ID,
+            redirect_uri: REDIRECT_URI,
+            state: state,
+            scope: 'openid profile email'
+        }).toString();
+
+        const popup = window.open(authorizeUrl, 'line-login', 'width=420,height=650');
+        if (!popup) {
+            if (clickedBtn) clickedBtn.disabled = false;
+            showMemberErrorModal('無法開啟登入視窗', '請允許本網站開啟彈出視窗後再試一次。');
+            return;
+        }
+
+        // 使用者也可能直接把彈窗關掉、沒有走完 LINE 授權流程——這種情況不會
+        // 有 postMessage 送回來，靠輪詢偵測彈窗關閉，才能把按鈕恢復可點擊、
+        // 清掉這個監聽器，不然會卡在「按鈕永遠反灰」的狀態
+        const popupClosedCheck = setInterval(() => {
+            if (popup.closed) {
+                clearInterval(popupClosedCheck);
+                window.removeEventListener('message', handleLineLoginMessage);
+                if (clickedBtn) clickedBtn.disabled = false;
+            }
+        }, 500);
+
+        function handleLineLoginMessage(event) {
+            if (event.origin !== CLOUD_FUNCTION_ORIGIN) return;
+            if (!event.data || event.data.source !== 'line-login') return;
+
+            clearInterval(popupClosedCheck);
+            window.removeEventListener('message', handleLineLoginMessage);
+            if (clickedBtn) clickedBtn.disabled = false;
+
+            if (event.data.error) {
+                showMemberErrorModal('LINE 登入失敗', event.data.error);
+                return;
+            }
+            if (!event.data.token) return;
+
+            signInWithCustomToken(auth, event.data.token)
+                .then(async (result) => {
+                    const user = result.user;
+                    const displayName = user.displayName || event.data.displayName || 'LINE 用戶';
+
+                    console.log('LINE 登入成功:', user.uid);
+
+                    await saveUserState(user);
+                    localStorage.setItem('userName', displayName);
+                    await checkIfAdmin(user);
+
+                    // 保存或更新用戶資料到 Firestore
+                    await saveUserToFirestore(user, displayName, 'line');
+
+                    if (window.authModals) {
+                        window.authModals.hideAllModals();
+                    }
+
+                    updateLoginUI(user);
+                    showMemberSuccessModal('登入成功', 'LINE 登入成功！');
+                })
+                .catch((error) => {
+                    console.error('LINE 登入失敗:', error);
+                    handleAuthError(error, 'LINE 登入失敗');
+                });
+        }
+
+        window.addEventListener('message', handleLineLoginMessage);
+    }
+
     // 更新登入後的 UI 狀態
     function updateLoginUI(user) {
         const displayName = localStorage.getItem('userName') || user.displayName || user.email?.split('@')[0] || user.phoneNumber || '用戶';
@@ -1291,6 +1403,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.preventDefault();
                 e.stopPropagation();
                 handleFacebookLogin();
+            }
+
+            if (e.target.closest('#line-login-btn')) {
+                e.preventDefault();
+                e.stopPropagation();
+                handleLineLogin();
             }
         });
 

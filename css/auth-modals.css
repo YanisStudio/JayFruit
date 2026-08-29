@@ -173,6 +173,21 @@
     background-color: #ccc;
 }
 
+/* LINE 登入按鈕 */
+.btn-line {
+    background-color: #06c755;
+    color: white;
+}
+
+.btn-line:hover {
+    background-color: #05a648;
+    box-shadow: 0 4px 12px rgba(6, 199, 85, 0.3);
+}
+
+.btn-line:disabled {
+    background-color: #ccc;
+}
+
 /* 電話號碼登入按鈕 */
 .btn-phone {
     background-color: #28a745;

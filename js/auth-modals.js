@@ -41,6 +41,12 @@ class AuthModals {
                             使用 Facebook 登入
                         </button>
                         
+                        <!-- LINE 登入按鈕 -->
+                        <button type="button" class="btn btn-line" id="line-login-btn">
+                            <i class="fab fa-line"></i>
+                            使用 LINE 登入
+                        </button>
+
                         <!-- 電話號碼登入按鈕 -->
                         <button type="button" class="btn btn-phone" id="phone-login-btn">
                             <i class="fas fa-phone"></i>

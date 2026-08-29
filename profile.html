@@ -221,6 +221,11 @@
     color: #7b1fa2;
 }
 
+.provider-badge.line {
+    background-color: #e6f9ee;
+    color: #06c755;
+}
+
 .readonly-note {
     font-size: 0.8rem;
     color: #999;
@@ -349,7 +354,8 @@
             RecaptchaVerifier,
             signInWithPhoneNumber,
             PhoneAuthProvider,
-            signInWithCredential
+            signInWithCredential,
+            signInWithCustomToken
         } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { 
             initializeFirestore, 
@@ -405,7 +411,8 @@
             RecaptchaVerifier,
             signInWithPhoneNumber,
             PhoneAuthProvider,
-            signInWithCredential
+            signInWithCredential,
+            signInWithCustomToken
         };
     </script>
 </head>
@@ -711,6 +718,25 @@
                         emailField.addEventListener('cut', preventEdit);
                         break;
                         
+                    case 'line':
+                        // LINE 登入沒有申請 email 權限，這裡的 email 欄位本來就是空的，
+                        // 但還是鎖起來、顯示 LINE 徽章，跟 Google/Facebook 鎖 email
+                        // 欄位是同一套處理方式，讓使用者清楚知道帳號是用 LINE 登入的
+                        console.log('設定 LINE 權限 - Email 唯讀');
+                        emailField.setAttribute('readonly', true);
+                        emailField.classList.add('field-readonly');
+                        emailField.style.backgroundColor = '#f9f9f9';
+                        emailProviderInfo.style.display = 'block';
+                        emailProviderBadge.className = 'provider-badge line';
+                        emailProviderBadge.innerHTML = '<i class="fab fa-line"></i> LINE 帳號';
+                        emailReadonlyNote.style.display = 'block';
+
+                        // 防止用戶修改
+                        emailField.addEventListener('keydown', preventEdit);
+                        emailField.addEventListener('paste', preventEdit);
+                        emailField.addEventListener('cut', preventEdit);
+                        break;
+
                     case 'phone':
                         console.log('設定電話權限 - Phone 唯讀');
                         phoneField.setAttribute('readonly', true);
@@ -776,7 +802,15 @@
             if (user.phoneNumber && !user.email) {
                 provider = 'phone';
             }
-            
+
+            // 特殊情況：LINE 登入是走 signInWithCustomToken，不是 Firebase 內建
+            // 的聯合登入方式，user.providerData 抓不到，只能靠 uid 的
+            // "line:" 前綴判斷（這個前綴是 functions/line-login.js 建立
+            // 使用者時固定加上的）
+            if (user.uid && user.uid.startsWith('line:')) {
+                provider = 'line';
+            }
+
             console.log('最終判定提供者:', provider);
             return provider;
         }
@@ -831,6 +865,9 @@
                             defaultName = '手機用戶';
                             document.getElementById('name').value = defaultName;
                             document.getElementById('phone').value = user.phoneNumber.replace(/^\+886/, '0');
+                        } else if (userProvider === 'line') {
+                            defaultName = user.displayName || 'LINE 用戶';
+                            document.getElementById('name').value = defaultName;
                         }
                         
                         // 創建用戶資料並保存註冊方式
