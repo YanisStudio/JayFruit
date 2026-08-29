@@ -59,6 +59,7 @@ exports.lineLoginCallback = onRequest(
 
             const tokenData = await tokenResp.json();
             const idToken = tokenData.id_token;
+            const lineAccessToken = tokenData.access_token;
             if (!idToken) {
                 logger.error("LINE token 回應缺少 id_token", { tokenData });
                 return sendResultPage(res, { error: "LINE 登入失敗，請重試" });
@@ -82,6 +83,29 @@ exports.lineLoginCallback = onRequest(
             if (!lineUserId) {
                 logger.error("id_token 缺少 sub（LINE userId）", { payload });
                 return sendResultPage(res, { error: "無法取得 LINE 使用者資訊" });
+            }
+
+            // 2.5 查詢這個 LINE 使用者是否已經加官方帳號好友。
+            // 用的是這次登入換到的 access_token（不是推播用的 Channel Access
+            // Token），且前提是 LINE Login channel 有在 LINE Developers Console
+            // 設定「Linked OA」連結到 @farmer-jay 這個官方帳號，否則查不到正確
+            // 結果。查詢失敗就當作「還沒加好友」處理（頂多多提示一次，不會
+            // 造成資料錯誤），不能因為這步失敗就讓整個登入流程失敗。
+            let lineFriend = false;
+            if (lineAccessToken) {
+                try {
+                    const friendResp = await fetch("https://api.line.me/friendship/v1/status", {
+                        headers: { Authorization: `Bearer ${lineAccessToken}` }
+                    });
+                    if (friendResp.ok) {
+                        const friendData = await friendResp.json();
+                        lineFriend = !!friendData.friendFlag;
+                    } else {
+                        logger.warn("查詢 LINE 好友狀態失敗", { status: friendResp.status });
+                    }
+                } catch (friendError) {
+                    logger.warn("查詢 LINE 好友狀態時發生例外", { error: friendError.message });
+                }
             }
 
             // 3. 建立或更新對應的 Firebase Auth 使用者
@@ -112,8 +136,8 @@ exports.lineLoginCallback = onRequest(
                 provider: "line",
                 lineUserId
             });
-            logger.info("LINE 登入成功", { uid });
-            return sendResultPage(res, { token: customToken, displayName });
+            logger.info("LINE 登入成功", { uid, lineFriend });
+            return sendResultPage(res, { token: customToken, displayName, lineFriend });
         } catch (err) {
             logger.error("LINE 登入處理發生例外", { error: err.message });
             return sendResultPage(res, { error: "LINE 登入發生錯誤，請重試" });
@@ -124,12 +148,15 @@ exports.lineLoginCallback = onRequest(
 // 回傳一個極簡的中繼頁面：用 postMessage 把結果傳回開啟這個彈窗的原始頁面，
 // 然後自動關閉彈窗。前端流程因此可以做成跟 Google/Facebook 一樣的彈窗體驗，
 // 不用整頁跳轉、不用自己頁面處理 LINE 的 callback 參數。
-function sendResultPage(res, { token, error, displayName }) {
+function sendResultPage(res, { token, error, displayName, lineFriend }) {
     const payload = JSON.stringify({
         source: "line-login",
         token: token || null,
         error: error || null,
-        displayName: displayName || null
+        displayName: displayName || null,
+        // 沒有 token（登入失敗）時 lineFriend 沒有意義，一律回 null，
+        // 避免前端誤判成「已知不是好友」
+        lineFriend: token ? !!lineFriend : null
     });
     res.set("Content-Type", "text/html; charset=utf-8");
     res.send(`<!DOCTYPE html>

@@ -599,6 +599,37 @@ function showMemberWarningModal(title, message) {
     });
 }
 
+// 提示使用者加官方 LINE 好友，才能收到訂單/出貨的即時通知。
+// 用在兩個時機：① LINE 登入完成當下發現還沒加好友、② 進入結帳頁時（見
+// initCheckoutLineFriendPrompt）再次確認 Firestore 存的好友狀態
+function showAddLineFriendModal() {
+    injectModalStyles();
+
+    const modal = document.createElement('div');
+    modal.className = 'member-modal member-warning-modal';
+    modal.innerHTML = `
+        <div class="member-modal-overlay"></div>
+        <div class="member-modal-content">
+            <div class="member-modal-icon">
+                <i class="fab fa-line" style="color: #06c755;"></i>
+            </div>
+            <h3>加入官方 LINE 好友</h3>
+            <p>加入「杰の御果園」官方 LINE 帳號，訂單成立、確認收款、出貨等狀態才能即時透過 LINE 通知您。</p>
+            <div class="member-modal-actions">
+                <a href="https://line.me/R/ti/p/@farmer-jay" target="_blank" rel="noopener" class="btn" onclick="closeMemberModal(this)">前往加入好友</a>
+                <button class="btn" style="background: #e0e0e0; color: #555;" onclick="closeMemberModal(this)">稍後再說</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    modal.querySelector('.member-modal-overlay').addEventListener('click', function() {
+        closeMemberModal(modal);
+    });
+}
+window.showAddLineFriendModal = showAddLineFriendModal;
+
 // 關閉彈窗的通用函數
 function closeMemberModal(element) {
     let modal;
@@ -655,7 +686,11 @@ async function saveUserState(user) {
 document.addEventListener('DOMContentLoaded', function() {
     // 初始化瀏覽器檢測
     BrowserDetection.init();
-    
+
+    // 結帳頁的「加官方 LINE 好友」提醒只彈一次，避免 onAuthStateChanged
+    // 之後如果又觸發一次同一個已登入用戶，重複跳出來打擾使用者
+    let lineFriendPromptShown = false;
+
     // 獲取各種元素
     const userActions = document.getElementById('user-actions');
     const userProfile = document.getElementById('user-profile');
@@ -969,7 +1004,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // 保存用戶資料到 Firestore
-    async function saveUserToFirestore(user, displayName, provider) {
+    // lineFriend 只有 provider === 'line' 時才有意義：true/false 是登入當下
+    // 查到的官方帳號好友狀態，undefined/null 代表沒有查（非 LINE 登入、或查詢失敗）
+    async function saveUserToFirestore(user, displayName, provider, lineFriend) {
         try {
             // 即時讀 window.firebaseServices.db，不用外層解構時快取的舊變數——
             // 連線重建時舊變數會停在已經失效的連線上
@@ -1008,6 +1045,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     userData.name = displayName;
                     userData.phone = '';
                     userData.lineUserId = user.uid.replace(/^line:/, '');
+                    if (typeof lineFriend === 'boolean') {
+                        userData.lineFriend = lineFriend;
+                    }
                 } else {
                     userData.name = displayName; // Google/Facebook 的顯示名稱
                     userData.phone = ''; // 其他登入方式 phone 欄位為空
@@ -1031,6 +1071,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 // 之前建立的、還沒有這個欄位）
                 if (provider === 'line') {
                     updateData.lineUserId = user.uid.replace(/^line:/, '');
+                    if (typeof lineFriend === 'boolean') {
+                        updateData.lineFriend = lineFriend;
+                    }
                 }
 
                 await setDoc(userRef, updateData, { merge: true });
@@ -1296,6 +1339,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(async (result) => {
                     const user = result.user;
                     const displayName = user.displayName || event.data.displayName || 'LINE 用戶';
+                    // Cloud Function 那邊已經用這次登入拿到的 LINE access_token
+                    // 查過好友狀態了，這裡直接收現成的結果就好，不用自己再查一次
+                    const lineFriend = event.data.lineFriend;
 
                     console.log('LINE 登入成功:', user.uid);
 
@@ -1303,15 +1349,22 @@ document.addEventListener('DOMContentLoaded', function() {
                     localStorage.setItem('userName', displayName);
                     await checkIfAdmin(user);
 
-                    // 保存或更新用戶資料到 Firestore
-                    await saveUserToFirestore(user, displayName, 'line');
+                    // 保存或更新用戶資料到 Firestore（含好友狀態）
+                    await saveUserToFirestore(user, displayName, 'line', lineFriend);
 
                     if (window.authModals) {
                         window.authModals.hideAllModals();
                     }
 
                     updateLoginUI(user);
-                    showMemberSuccessModal('登入成功', 'LINE 登入成功！');
+
+                    // lineFriend === false 才提示（null 代表查詢失敗，不確定狀態，
+                    // 不主動打擾使用者，等進到結帳頁再用 Firestore 存的值判斷一次）
+                    if (lineFriend === false) {
+                        showAddLineFriendModal();
+                    } else {
+                        showMemberSuccessModal('登入成功', 'LINE 登入成功！');
+                    }
                 })
                 .catch((error) => {
                     console.error('LINE 登入失敗:', error);
@@ -1584,6 +1637,20 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                             if (usernameDisplayMobile) {
                                 usernameDisplayMobile.textContent = name;
+                            }
+
+                            // 結帳頁提醒：LINE 登入、且登入時查到還沒加官方好友，
+                            // 提醒使用者加好友才收得到訂單即時通知。用 Firestore
+                            // 存的 lineFriend（登入當下查的結果）判斷，不在這裡
+                            // 重新呼叫 LINE API
+                            if (!lineFriendPromptShown
+                                && window.location.pathname.endsWith('checkout.html')
+                                && user.uid.startsWith('line:')
+                                && docSnap.data().lineFriend === false) {
+                                lineFriendPromptShown = true;
+                                if (window.showAddLineFriendModal) {
+                                    window.showAddLineFriendModal();
+                                }
                             }
                         } else {
                             // 如果找不到用戶資料，使用預設顯示
