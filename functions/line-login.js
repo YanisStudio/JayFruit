@@ -101,7 +101,10 @@ exports.lineLoginCallback = onRequest(
                         const friendData = await friendResp.json();
                         lineFriend = !!friendData.friendFlag;
                     } else {
-                        logger.warn("查詢 LINE 好友狀態失敗", { status: friendResp.status });
+                        const friendErrBody = await friendResp.text();
+                        // 常見原因：LINE Login channel 還沒在 Developers Console
+                        // 設定「Linked OA」連到官方帳號，這支 API 才會失敗
+                        logger.warn("查詢 LINE 好友狀態失敗（可能是 Linked OA 沒設定）", { status: friendResp.status, body: friendErrBody });
                     }
                 } catch (friendError) {
                     logger.warn("查詢 LINE 好友狀態時發生例外", { error: friendError.message });
