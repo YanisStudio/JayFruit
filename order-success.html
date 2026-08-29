@@ -928,15 +928,32 @@
             // 設置付款方式狀態
             isTransferPayment = (paymentMethod === 'transfer');
 
+            // 從 sessionStorage 獲取訂單信息
+            const lastOrderJSON = sessionStorage.getItem('lastOrder');
+
+            if (!lastOrderJSON) {
+                document.getElementById('order-details').innerHTML = '<p class="error-message">無法找到訂單信息，請查看您的訂單記錄或聯繫客服。</p>';
+                document.getElementById('account-reminder').style.display = 'none';
+                return;
+            }
+
+            const lastOrder = JSON.parse(lastOrderJSON);
+
+            // 一般結帳流程送出訂單後，是導向沒有帶任何網址參數的 order-success.html
+            // （只有加購流程 order-addon.html 才會在網址帶 orderId），所以訂單 ID
+            // 平常要看 sessionStorage 存的 lastOrder.id，不能只看網址參數，不然
+            // 一般訂單永遠對不到 orderId、下面的付款狀態查詢形同虛設
+            const effectiveOrderId = lastOrder.id || orderId;
+
             // 如果是轉帳付款，要先查 Firestore 確認這筆訂單「這次載入之前」
             // 是不是已經回報過匯款了——不能只憑這次頁面的記憶體變數判斷，
             // 不然使用者重新整理頁面（或登出、上一頁再回來）時，畫面會看不出
             // 已經填過，又跑出空白表單讓人以為要重填一次。
             // 用 getDocFromServer 而不是 getDoc，避免本地快取還停在「舊訂單、
             // 還沒確認」的狀態，把已經確認的訂單誤判成還沒確認。
-            if (isTransferPayment && orderId && window.firebaseServices) {
+            if (isTransferPayment && effectiveOrderId && window.firebaseServices) {
                 try {
-                    const orderDocRef = window.firebaseServices.doc(window.firebaseServices.db, 'orders', orderId);
+                    const orderDocRef = window.firebaseServices.doc(window.firebaseServices.db, 'orders', effectiveOrderId);
                     const orderDocSnap = await window.firebaseServices.getDocFromServer(orderDocRef);
                     if (orderDocSnap.exists() && orderDocSnap.data().paymentConfirmed) {
                         isTransferConfirmed = true;
@@ -946,17 +963,6 @@
                 }
             }
 
-            // 從 sessionStorage 獲取訂單信息
-            const lastOrderJSON = sessionStorage.getItem('lastOrder');
-            
-            if (!lastOrderJSON) {
-                document.getElementById('order-details').innerHTML = '<p class="error-message">無法找到訂單信息，請查看您的訂單記錄或聯繫客服。</p>';
-                document.getElementById('account-reminder').style.display = 'none';
-                return;
-            }
-            
-            const lastOrder = JSON.parse(lastOrderJSON);
-            
             // 更新訂單詳情
             document.getElementById('order-number').textContent = lastOrder.orderNumber || '未知';
             document.getElementById('order-total').textContent = lastOrder.total ? `${lastOrder.total}` : '未知';
