@@ -1288,7 +1288,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const CLOUD_FUNCTION_ORIGIN = 'https://us-central1-jayfruit-9dfab.cloudfunctions.net';
 
         const clickedBtn = document.getElementById('line-login-btn');
-        if (clickedBtn) clickedBtn.disabled = true;
+        const lineBtnOriginalText = clickedBtn ? clickedBtn.innerHTML : '';
+        function resetLineLoginBtn() {
+            if (clickedBtn) {
+                clickedBtn.innerHTML = lineBtnOriginalText;
+                clickedBtn.disabled = false;
+            }
+        }
+        if (clickedBtn) {
+            clickedBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 登入中...';
+            clickedBtn.disabled = true;
+        }
 
         // state 只做基本的隨機值紀錄，不是完整的 CSRF 防護——這個彈窗流程沒有
         // 伺服器端 session 可以拿來核對 state 是否一致，真正的安全性來自於
@@ -1305,7 +1315,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const popup = window.open(authorizeUrl, 'line-login', 'width=420,height=650');
         if (!popup) {
-            if (clickedBtn) clickedBtn.disabled = false;
+            resetLineLoginBtn();
             showMemberErrorModal('無法開啟登入視窗', '請允許本網站開啟彈出視窗後再試一次。');
             return;
         }
@@ -1317,7 +1327,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (popup.closed) {
                 clearInterval(popupClosedCheck);
                 window.removeEventListener('message', handleLineLoginMessage);
-                if (clickedBtn) clickedBtn.disabled = false;
+                resetLineLoginBtn();
             }
         }, 500);
 
@@ -1327,13 +1337,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
             clearInterval(popupClosedCheck);
             window.removeEventListener('message', handleLineLoginMessage);
-            if (clickedBtn) clickedBtn.disabled = false;
 
             if (event.data.error) {
+                resetLineLoginBtn();
                 showMemberErrorModal('LINE 登入失敗', event.data.error);
                 return;
             }
-            if (!event.data.token) return;
+            if (!event.data.token) {
+                resetLineLoginBtn();
+                return;
+            }
+
+            // 拿到 token 之後還要跑 signInWithCustomToken + 寫入 Firestore，
+            // 按鈕繼續轉圈到這整段都跑完（不管成功或失敗）才恢復，
+            // 讓使用者看得出來還在處理中，跟 Google/Facebook 登入的體驗一致
 
             signInWithCustomToken(auth, event.data.token)
                 .then(async (result) => {
@@ -1369,6 +1386,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 .catch((error) => {
                     console.error('LINE 登入失敗:', error);
                     handleAuthError(error, 'LINE 登入失敗');
+                })
+                .finally(() => {
+                    resetLineLoginBtn();
                 });
         }
 
