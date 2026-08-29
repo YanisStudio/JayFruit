@@ -947,7 +947,7 @@
                 const district = document.getElementById('district').value;
                 const address = document.getElementById('address').value;
                 const email = document.getElementById('email').value;
-                
+
                 // 準備更新數據
                 const userData = {
                     name: name,
@@ -955,9 +955,14 @@
                     city: city,
                     district: district,
                     address: address,
-                    email: email,
                     updatedAt: firebaseServices.serverTimestamp()
                 };
+
+                // LINE 登入的話，email 欄位現在顯示、鎖住的是 LINE ID，不是真的
+                // email，不能把這個值寫進 email 欄位（會把 email 汙染成 LINE ID）
+                if (userProvider !== 'line') {
+                    userData.email = email;
+                }
                 
                 // 更新 Firestore 中的用戶資料
                 const userDocRef = firebaseServices.doc(firebaseServices.db, 'users', user.uid);
