@@ -1042,9 +1042,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     // 相關功能的人本來就會改走信箱登入）。額外存一份不帶
                     // "line:" 前綴的 LINE userId，讓 email 是空的時候還有
                     // 明確的識別依據可以用
-                    userData.name = displayName;
+                    userData.name = displayName; // 網站上顯示用的名稱，之後使用者可以自己改
                     userData.phone = '';
                     userData.lineUserId = user.uid.replace(/^line:/, '');
+                    // 額外獨立存一份 LINE 暱稱：name 之後會被使用者自己在個人資料頁改掉，
+                    // 但後臺會員列表要看的是「LINE 真正的暱稱」，這個欄位不能被
+                    // profile.html 的編輯動作動到，只由這裡（登入當下）更新
+                    userData.lineDisplayName = displayName;
                     if (typeof lineFriend === 'boolean') {
                         userData.lineFriend = lineFriend;
                     }
@@ -1068,9 +1072,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 // 如果是 LINE 登入，補上 lineUserId（避免舊帳號在加這個特例
-                // 之前建立的、還沒有這個欄位）
+                // 之前建立的、還沒有這個欄位），並且每次登入都用 LINE 當下回報
+                // 的暱稱刷新 lineDisplayName——這個欄位是後臺會員列表要看的
+                // 「LINE 真正的暱稱」，不能跟 name 混用，name 之後會被使用者
+                // 自己在個人資料頁改掉，改了也不該影響這裡
                 if (provider === 'line') {
                     updateData.lineUserId = user.uid.replace(/^line:/, '');
+                    updateData.lineDisplayName = displayName;
                     if (typeof lineFriend === 'boolean') {
                         updateData.lineFriend = lineFriend;
                     }

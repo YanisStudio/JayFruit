@@ -565,6 +565,10 @@
                         phone: userData.phone || '',
                         provider: userData.provider || 'email',
                         lineUserId: userData.lineUserId || '',
+                        // lineDisplayName 是登入當下 LINE 回報的暱稱，不會被使用者
+                        // 在個人資料頁改 name 影響到；舊帳號在這欄位加入之前建立、
+                        // 還沒有值的話，先退回顯示 name（比完全沒有好）
+                        lineDisplayName: userData.lineDisplayName || userData.name || '',
                         city: userData.city || '',
                         district: userData.district || '',
                         address: userData.address || '',
@@ -669,12 +673,11 @@
                     lastLoginText = window.AdminCommon.formatDate(user.lastLoginAt, 'date');
                 }
 
-                // LINE 登入沒有信箱，這一格改顯示 LINE 的暱稱——user.name 對 LINE 使用者
-                // 來說，第一次登入時就是存 LINE 當下回報的暱稱，之後除非本人自己在
-                // 個人資料頁改過，不然就是 LINE 暱稱本身（注意這裡是 user.name 本身，
-                // 上面組資料時已經把空值預設成「未設置姓名」，所以一定有值可顯示）
+                // LINE 登入沒有信箱，這一格改顯示 LINE 的暱稱。用 lineDisplayName，
+                // 不是 user.name——name 是網站上顯示用的名稱，使用者可以自己在
+                // 個人資料頁改掉，改了不該影響這裡要看的「LINE 真正的暱稱」
                 const emailCellText = user.provider === 'line'
-                    ? window.AdminCommon.escapeHtml(user.name)
+                    ? (window.AdminCommon.escapeHtml(user.lineDisplayName) || '未提供')
                     : (window.AdminCommon.escapeHtml(user.email) || '未提供');
 
                 html += `
