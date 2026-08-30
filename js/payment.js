@@ -799,10 +799,21 @@ document.addEventListener('DOMContentLoaded', function() {
     // 載入用戶個人資料並填充表單
     function loadUserProfile(user) {
         const uid = user.uid;
-        
-        // 設定電子郵件欄位
-        document.getElementById('email').value = user.email;
-        
+
+        // 設定電子郵件欄位。電話登入的人 user.email 通常是 undefined，
+        // 不能直接指定給 input.value，否則欄位會顯示成字面上的 "undefined"
+        document.getElementById('email').value = user.email || '';
+
+        // 電話登入的人目前收不到任何通知：網站沒有簡訊功能，訂單/匯款回報/
+        // 出貨通知都只會寄到 customer.email，這個欄位又剛好沒東西可以預先
+        // 帶入。提醒他們自己填一個信箱，不然什麼通知都收不到
+        const isPhoneLogin = Array.isArray(user.providerData) &&
+            user.providerData.some(p => p.providerId === 'phone');
+        const phoneLoginHint = document.getElementById('phone-login-email-hint');
+        if (phoneLoginHint) {
+            phoneLoginHint.style.display = isPhoneLogin ? 'block' : 'none';
+        }
+
         // 從 Firestore 獲取用戶資料
         firebaseServices.getDoc(firebaseServices.doc(firebaseServices.db, 'users', uid))
             .then((docSnap) => {

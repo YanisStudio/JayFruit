@@ -59,6 +59,15 @@ function buildItemsTable(items) {
 }
 
 async function sendOrderEmail({ order, subject, bodyHtml, logLabel, orderId }) {
+    // 通知管道依登入方式二選一，不是「有信箱就都寄」：
+    // - LINE 登入的訂單一律走 LINE 通知，不寄信——即使結帳表單剛好也填了
+    //   信箱，也不要同一件事透過兩種管道各通知一次
+    // - 信箱/Google/Facebook/電話登入（或訪客結帳）都只能靠信箱通知，
+    //   目前沒有簡訊功能，電話登入的人如果結帳沒填信箱就是收不到通知
+    if (getLineUserId(order)) {
+        logger.info(`${logLabel}：LINE 登入訂單改走 LINE 通知，略過寄信`, { orderId });
+        return;
+    }
     if (!order?.customer?.email) {
         logger.warn(`${logLabel}：訂單缺少顧客信箱，略過寄信`, { orderId });
         return;
@@ -85,8 +94,8 @@ function buildItemsText(items) {
 
 // 訂單的 userId 只有登入結帳才會有，而且格式是 line:<LINE userId>，這是
 // functions/line-login.js 建立 Firebase 使用者時固定加的前綴。訪客結帳、
-// 或用 Google/Facebook/電話/信箱登入結帳的訂單，這裡一律回傳 null，
-// 略過 LINE 推播、只寄 Email，不會出錯。
+// 或用 Google/Facebook/電話/信箱登入結帳的訂單，這裡一律回傳 null——
+// sendOrderEmail() 會用這個判斷「這筆訂單通知要走信箱還是 LINE」
 function getLineUserId(order) {
     const userId = order?.userId;
     if (typeof userId === "string" && userId.startsWith("line:")) {
