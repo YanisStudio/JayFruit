@@ -18,6 +18,15 @@ const auth = getAuth();
 const db = getFirestore();
 
 function detectProvider(userRecord) {
+    // LINE 是透過 Firebase Custom Token 登入，不是原生的聯合登入 provider，
+    // providerData 永遠是空陣列，下面整段判斷都會落空，只能靠 uid 的
+    // "line:" 前綴判斷（跟 profile.html / orders.html 用的是同一套依據）。
+    // 沒有這行的話，LINE 帳號一律被判斷成 'unknown'，雖然下面校正 provider
+    // 欄位的邏輯有特別排除 'unknown' 不覆蓋、不會真的把已經是 'line' 的
+    // 資料改壞，但如果是這裡第一次幫 LINE 帳號建立 Firestore 資料
+    // （users 文件遺失的邊緣情況），還是會建立成錯的 'unknown'。
+    if (userRecord.uid && userRecord.uid.startsWith('line:')) return 'line';
+
     const providerId = userRecord.providerData[0]?.providerId || '';
     if (providerId.includes('facebook')) return 'facebook';
     if (providerId.includes('google')) return 'google';
@@ -79,12 +88,16 @@ async function main() {
 
         if (!userSnap.exists) {
             const { creationTime, lastSignInTime } = getAuthTimes(userRecord);
+            const provider = detectProvider(userRecord);
             await userRef.set({
                 email,
                 phone,
                 name,
                 photoURL: userRecord.photoURL || '',
-                provider: detectProvider(userRecord),
+                provider,
+                // admin/users.html 的會員列表會用這個欄位識別 LINE 帳號，
+                // 跟 member.js 的 saveUserToFirestore() 存的格式一致（不帶 "line:" 前綴）
+                ...(provider === 'line' ? { lineUserId: userRecord.uid.replace(/^line:/, '') } : {}),
                 createdAt: creationTime,
                 lastLoginAt: lastSignInTime,
                 city: '',
@@ -110,6 +123,9 @@ async function main() {
         if (authProvider !== 'unknown' && data.provider !== authProvider) {
             patch.provider = authProvider;
             reasons.push('登入方式不符');
+        }
+        if (authProvider === 'line' && !data.lineUserId) {
+            patch.lineUserId = userRecord.uid.replace(/^line:/, '');
         }
 
         // createdAt / lastLoginAt 缺欄位，或註冊時間比最後登入時間還晚
