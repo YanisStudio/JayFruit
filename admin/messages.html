@@ -2,6 +2,15 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
+    <!-- firebase-warmup：讓瀏覽器一開始解析頁面就先跟 Firebase 握手、下載 SDK，
+         不用等到下面載入 Firebase 的 module 腳本才開始。版本號要跟 import 的一致。 -->
+    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-lite.js">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js">
     <link rel="icon" type="image/png" sizes="32x32" href="../images/favicon-32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="../images/favicon-16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="../images/apple-touch-icon.png">
@@ -11,44 +20,47 @@
     <meta name="keywords" content="台灣水果,高山水果,新鮮水果,水果禮盒,梨子,水蜜桃,蘋果,杰の御果園,果園直送,有機水果">
     <meta name="author" content="杰の御果園">
 
-    <link rel="stylesheet" href="../css/style.css">
-    <link rel="stylesheet" href="../css/admin-common.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="../css/style.css?v=20261014">
+    <link rel="stylesheet" href="../css/admin-common.css?v=20261014">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer">
 
-    <script src="../js/firebase-config.js"></script>
+    <script src="../js/firebase-config.js?v=20261014"></script>
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import {
           getAuth,
           onAuthStateChanged,
           signOut
-        } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import {
           initializeFirestore,
+            terminate,
           collection,
           doc,
           getDoc,
           getDocs,
-          getDocsFromServer,
+          getDocs as getDocsFromServer,
           deleteDoc,
           updateDoc,
           query,
           orderBy,
           where,
           serverTimestamp
-        } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-lite.js";
 
         const firebaseConfig = window.FIREBASE_CONFIG;
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        // 自動偵測目前網路環境是否會擋掉預設的串流連線，會的話自動改用相容性更好的
-        // 長輪詢，降低連線逾時、被誤判成「查無資料」的機率
-        const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
+        // 連線設定統一放在 js/firebase-config.js 的 FIRESTORE_SETTINGS（原因寫在那裡）
+        const db = initializeFirestore(app, window.FIRESTORE_SETTINGS);
 
         window.firebaseServices = {
           auth: auth,
           db: db,
+          app: app,
+          initializeFirestore,
+          terminate,
           getAuth,
           signOut,
           onAuthStateChanged,
@@ -171,8 +183,7 @@
         </div>
     </footer>
 
-    <script src="../js/member.js"></script>
-    <script src="../js/admin-common.js"></script>
+    <script src="../js/admin-common.js?v=20261014"></script>
 
     <style>
         /* 訊息管理特定樣式 */
@@ -503,19 +514,16 @@
             try {
                 messageList.innerHTML = '<p class="placeholder-message">讀取訊息中...</p>';
 
-                const db = window.firebaseServices.db;
-                const collection = window.firebaseServices.collection;
-                const query = window.firebaseServices.query;
-                const orderBy = window.firebaseServices.orderBy;
-                const getDocs = window.firebaseServices.getDocs;
                 const escapeHtml = window.AdminCommon.escapeHtml;
 
-                // 獲取 messages 集合的引用，按時間排序（最新在前）
-                const messagesCollectionRef = collection(db, 'messages');
-                const q = query(messagesCollectionRef, orderBy('createdAt', 'desc'));
-
-                // 獲取文檔
-                const querySnapshot = await getDocs(q);
+                // 按時間排序（最新在前）。連線失敗自動重試、顯示「連線中」，
+                // 不會把讀不到誤顯示成「目前沒有訊息」
+                const querySnapshot = await window.AdminCommon.loadWithRetry(() => {
+                    const { db, collection, query, orderBy, getDocsFromServer } = window.firebaseServices;
+                    return getDocsFromServer(query(collection(db, 'messages'), orderBy('createdAt', 'desc')));
+                }, () => {
+                    messageList.innerHTML = '<p class="placeholder-message">網路連線不穩定，正在重新連線中…</p>';
+                });
 
                 if (querySnapshot.empty) {
                     messageList.innerHTML = '<p class="placeholder-message">目前沒有訊息</p>';
@@ -550,7 +558,7 @@
                     const replyDisplayHTML = hasReply ? `
                         <div class="message-reply">
                             <h4><i class="fas fa-reply"></i> 商家回覆${repliedFormattedDate ? `（${repliedFormattedDate}）` : ''}</h4>
-                            <p>${escapeHtml(messageData.reply)}</p>
+                            <p>${escapeHtml(messageData.reply).replace(/\n/g, '<br>')}</p>
                         </div>
                     ` : '';
 
@@ -568,7 +576,7 @@
                             <span><i class="fas fa-phone"></i> <strong>電話:</strong> ${escapeHtml(messageData.phone) || 'N/A'}</span>
                         </div>
                         <div class="message-content">
-                            <p>${escapeHtml(messageData.message)}</p>
+                            <p>${escapeHtml(messageData.message).replace(/\n/g, '<br>')}</p>
                         </div>
                         <div class="message-reply-section">
                             ${replyDisplayHTML}

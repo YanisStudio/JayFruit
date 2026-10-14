@@ -2,6 +2,14 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
+    <!-- firebase-warmup：讓瀏覽器一開始解析頁面就先跟 Firebase 握手、下載 SDK，
+         不用等到下面載入 Firebase 的 module 腳本才開始。版本號要跟 import 的一致。 -->
+    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-lite.js">
     <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="images/favicon-16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="images/apple-touch-icon.png">
@@ -17,24 +25,24 @@
     <meta property="og:image" content="https://jayfarmer.tw/images/logo.jpg">
     <meta property="og:url" content="https://jayfarmer.tw/order-success.html">
     <meta property="og:type" content="website">
-    
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/common.css">
-    <link rel="stylesheet" href="css/cart.css">
-    <link rel="stylesheet" href="css/order-success.css">
+
+    <link rel="stylesheet" href="css/style.css?v=20261014">
+    <link rel="stylesheet" href="css/common.css?v=20261014">
+    <link rel="stylesheet" href="css/cart.css?v=20261014">
+    <link rel="stylesheet" href="css/order-success.css?v=20261014">
     <!-- 新增彈窗樣式 -->
-    <link rel="stylesheet" href="css/auth-modals.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="css/auth-modals.css?v=20261014">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer">
 
     <!-- Firebase SDK引入 - 修復版本 -->
-    <script src="js/firebase-config.js"></script>
+    <script src="js/firebase-config.js?v=20261014"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { 
-            getAuth, 
-            createUserWithEmailAndPassword, 
-            signInWithEmailAndPassword, 
-            signOut, 
+        import {
+            getAuth,
+            createUserWithEmailAndPassword,
+            signInWithEmailAndPassword,
+            signOut,
             onAuthStateChanged,
             sendSignInLinkToEmail,
             isSignInWithEmailLink,
@@ -50,36 +58,39 @@
             signInWithCredential,
             signInWithCustomToken
         } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { 
-            initializeFirestore, 
-            collection, 
+        import {
+            initializeFirestore,
+            terminate,
+            collection,
             doc,
             setDoc,
             getDoc,
-            getDocFromServer,
+            getDoc as getDocFromServer,
             getDocs,
-            getDocsFromServer,
+            getDocs as getDocsFromServer,
             addDoc,
             updateDoc,  // 確保導入 updateDoc
             increment,
             query,
             orderBy,
             where,
-            serverTimestamp 
-        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-        
+            serverTimestamp
+        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-lite.js";
+
         const firebaseConfig = window.FIREBASE_CONFIG;
-        
+
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        // 自動偵測目前網路環境是否會擋掉預設的串流連線，會的話自動改用相容性更好的
-        // 長輪詢，降低連線逾時、被誤判成「查無資料」的機率
-        const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
-        
+        // 連線設定統一放在 js/firebase-config.js 的 FIRESTORE_SETTINGS（原因寫在那裡）
+        const db = initializeFirestore(app, window.FIRESTORE_SETTINGS);
+
         // 確保所有需要的函數都被導出到 window.firebaseServices
         window.firebaseServices = {
             auth: auth,
             db: db,
+            app: app,
+            initializeFirestore,
+            terminate,
             getAuth,
             createUserWithEmailAndPassword,
             signInWithEmailAndPassword,
@@ -113,10 +124,10 @@
             signInWithCredential,
             signInWithCustomToken
         };
-        
+
         // 確保 Firebase 初始化完成的標誌
         window.firebaseInitialized = true;
-        
+
         // 觸發自定義事件通知 Firebase 已準備好
         window.dispatchEvent(new Event('firebaseReady'));
     </script>
@@ -386,13 +397,14 @@
                 flex-direction: column;
                 align-items: center;
             }
-            
+
             .success-modal-actions .btn {
                 width: 100%;
                 max-width: 200px;
             }
         }
     </style>
+    <link rel="stylesheet" href="css/storefront.css?v=20261014">
 </head>
 <body>
     <header>
@@ -400,7 +412,7 @@
             <button class="menu-toggle" id="menu-toggle">
                 <i class="fas fa-bars"></i>
             </button>
-            
+
             <a href="index.html" class="logo-container">
                 <img src="images/logo.jpg" alt="杰の御果園 logo" width="492" height="649" class="logo-image">
                 <div class="logo">
@@ -408,7 +420,7 @@
                     <p>新鮮直送・品質保證</p>
                 </div>
             </a>
-            
+
             <div class="mobile-header-actions">
                 <div class="cart-icon-container">
                     <a href="cart.html" class="cart-icon">
@@ -417,19 +429,19 @@
                     </a>
                 </div>
             </div>
-            
+
             <nav id="main-nav">
                 <ul>
                     <li><a href="index.html">首頁</a></li>
                     <li><a href="products.html">產品</a></li>
                     <li><a href="about.html">關於果園</a></li>
                     <li><a href="contact.html">聯絡我們</a></li>
-                    
+
                     <div class="mobile-actions">
                         <div class="user-actions" id="user-actions-mobile">
                             <a href="#" class="btn-login" id="login-btn-mobile">登入</a>
                         </div>
-                        
+
                         <div class="user-profile-mobile" id="user-profile-mobile">
                             <div class="user-info">
                                 <i class="fas fa-user-circle"></i>
@@ -446,7 +458,7 @@
                     </div>
                 </ul>
             </nav>
-            
+
             <div class="header-right">
                 <div class="cart-icon-container">
                     <a href="cart.html" class="cart-icon">
@@ -454,11 +466,11 @@
                         <span class="cart-count" id="cart-count">0</span>
                     </a>
                 </div>
-                
+
                 <div class="user-actions" id="user-actions">
                     <a href="#" class="btn-login" id="login-btn">登入</a>
                 </div>
-                
+
                 <div class="user-profile" id="user-profile">
                     <div class="user-name" id="user-dropdown-btn">
                         <i class="fas fa-user-circle"></i>
@@ -476,11 +488,11 @@
             </div>
         </div>
     </header>
-    
+
     <div class="menu-overlay" id="menu-overlay"></div>
-    
+
     <!-- 彈窗會由 auth-modals.js 動態創建 -->
-    
+
     <main>
         <!-- Hero 區域 -->
         <section class="hero">
@@ -491,7 +503,7 @@
                 </div>
             </div>
         </section>
-        
+
         <!-- 結帳步驟指示器 -->
         <section class="checkout-section">
             <div class="container">
@@ -513,17 +525,17 @@
                 </div>
             </div>
         </section>
-        
+
         <section class="success-section">
             <div class="container">
                 <div class="success-container">
                     <div class="success-icon">
                         <i class="fas fa-check-circle"></i>
                     </div>
-                    
+
                     <h2>您的訂單已成功提交！</h2>
                     <p class="success-message">感謝您選購杰の御果園的優質水果，我們將盡快安排出貨。</p>
-                    
+
                     <div class="order-details" id="order-details">
                         <div class="order-info">
                             <p><strong>訂單編號:</strong> <span id="order-number">正在載入...</span></p>
@@ -534,7 +546,7 @@
                             <p><strong>訂單日期:</strong> <span id="order-date">正在載入...</span></p>
                         </div>
                     </div>
-                    
+
                     <div class="payment-notice" id="payment-notice">
                         <h3>付款通知</h3>
                         <p>您選擇了 <span id="payment-method">正在載入...</span> 付款。</p>
@@ -550,7 +562,7 @@
                                 <p>帳號：0015-976-998756</p>
                             </div>
                             <p class="important-note">※ 完成轉帳後，請保留交易明細並填寫下方表單提交轉帳末5碼，以利我們確認您的付款。</p>
-                            
+
                             <!-- 匯款確認表單 -->
                             <div class="transfer-confirmation" id="transfer-confirmation-form">
                                 <h4>匯款確認</h4>
@@ -574,14 +586,14 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="shipping-info">
                         <h3>配送資訊</h3>
                         <p>我們會在確認您的付款後，於 1-3 個工作天內安排出貨。</p>
                         <p>出貨時，我們會透過簡訊通知您，請保持手機暢通。</p>
                         <p>預計送達時間：下單後 3-5 個工作天 (視付款時間而定)</p>
                     </div>
-                    
+
                     <!-- 帳戶關聯提醒 -->
                     <div class="account-reminder" id="account-reminder">
                         <h3><i class="fas fa-info-circle"></i> 訂單追蹤</h3>
@@ -589,7 +601,7 @@
                             <!-- 內容將由JavaScript動態填充 -->
                         </div>
                     </div>
-                    
+
                     <div class="success-actions">
                         <a href="index.html" class="btn btn-outline">返回首頁</a>
                         <a href="products.html" class="btn btn-primary">繼續購物</a>
@@ -598,41 +610,59 @@
             </div>
         </section>
     </main>
-    
-    <footer>
+
+    <footer class="site-footer">
         <div class="container">
             <div class="footer-content">
                 <div class="footer-section">
-                    <h3>粉絲專頁</h3>
-                    <p>為您提供最優質的水果選擇</p>
+                    <h3>杰の御果園</h3>
+                    <p>梨山高山果園直營，新鮮直送到府</p>
                     <div class="social-links">
-                        <a href="https://www.facebook.com/jay0955688658" target="_blank" title="Facebook 粉絲頁"><i class="fab fa-facebook"></i></a>
-                        <a href="https://line.me/R/ti/p/@farmer-jay" target="_blank" title="LINE官方帳號"><i class="fab fa-line"></i></a>
+                        <a href="https://www.facebook.com/jay0955688658" target="_blank" rel="noopener" title="Facebook 粉絲專頁" aria-label="Facebook 粉絲專頁"><i class="fab fa-facebook"></i></a>
+                        <a href="https://line.me/R/ti/p/@farmer-jay" target="_blank" rel="noopener" title="LINE 官方帳號" aria-label="LINE 官方帳號"><i class="fab fa-line"></i></a>
                     </div>
                 </div>
-                
+
+                <div class="footer-section">
+                    <h3>水果分類</h3>
+                    <ul class="footer-links">
+                        <li><a href="products.html?category=peach">水蜜桃</a></li>
+                        <li><a href="products.html?category=persimmon">甜柿</a></li>
+                        <li><a href="products.html?category=pear">梨子</a></li>
+                        <li><a href="products.html?category=apple">蘋果</a></li>
+                        <li><a href="products.html?category=gift">禮盒</a></li>
+                        <li><a href="products.html">所有商品 &raquo;</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h3>顧客服務</h3>
+                    <ul class="footer-links">
+                        <li><a href="about.html">關於果園</a></li>
+                        <li><a href="contact.html">聯絡我們</a></li>
+                        <li><a href="orders.html">訂單查詢</a></li>
+                        <li><a href="cart.html">購物車</a></li>
+                    </ul>
+                </div>
+
                 <div class="footer-section">
                     <h3>聯絡資訊</h3>
-                    <p><a href="https://line.me/R/ti/p/@farmer-jay" target="_blank" style="color: #06c755; text-decoration: none;"><i class="fab fa-line"></i> LINE 官方帳號：@farmer-jay</a></p>
+                    <p><a href="https://line.me/R/ti/p/@farmer-jay" target="_blank" rel="noopener" style="color: #06c755;"><i class="fab fa-line"></i> LINE 官方帳號：@farmer-jay</a></p>
                     <p><i class="fas fa-map-marker-alt"></i> 果園地址：台中市和平區環山</p>
-                </div>
-                
-                <div class="footer-section">
-                    <h3>客服時間</h3>
-                    <p><i class="far fa-clock"></i> 週一至週五：9:00 - 18:00</p>
+                    <p><i class="far fa-clock"></i> 客服時間：週一至週五 9:00 - 18:00</p>
                 </div>
             </div>
-            
+
             <div class="copyright">
                 <p>&copy; 2025 杰の御果園。保留所有權利。</p>
             </div>
         </div>
     </footer>
-    
+
     <!-- 引入彈窗管理器 -->
-    <script src="js/auth-modals.js"></script>
-    <script src="js/common.js"></script>
-    <script src="js/member.js"></script>
+    <script src="js/auth-modals.js?v=20261014"></script>
+    <script src="js/common.js?v=20261014"></script>
+    <script src="js/member.js?v=20261014"></script>
 
     <!-- 訂單完成頁面功能 -->
     <script>
@@ -650,24 +680,24 @@
         document.addEventListener('DOMContentLoaded', async function() {
             // 等待 Firebase 初始化
             await waitForFirebase();
-            
+
             // 初始化共用功能
             initCommonFeatures();
-            
+
             // 追蹤匯款確認狀態
             let isTransferConfirmed = false;
             let isTransferPayment = false;
-            
+
             // 獲取URL參數
             const urlParams = new URLSearchParams(window.location.search);
             const paymentMethod = urlParams.get('payment') || 'transfer';
             let customerEmail = urlParams.get('email') || '';
-            
+
             // 檢查是否為加購訂單
             const isAddon = urlParams.get('isAddon') === 'true';
             const priceDifference = parseFloat(urlParams.get('priceDifference')) || 0;
             const orderId = urlParams.get('orderId');
-            
+
             // 顯示確認提交成功彈窗
             function showTransferConfirmationModal() {
                 const modal = document.createElement('div');
@@ -685,21 +715,21 @@
                         </div>
                     </div>
                 `;
-                
+
                 document.body.appendChild(modal);
-                
+
                 document.getElementById('confirmation-ok-btn').addEventListener('click', function(e) {
                     e.preventDefault();
                     modal.remove();
                 });
-                
+
                 // 點擊背景關閉
                 modal.addEventListener('click', function(e) {
                     if (e.target === modal) {
                         modal.remove();
                     }
                 });
-                
+
                 // 3秒後自動關閉
                 setTimeout(() => {
                     if (document.body.contains(modal)) {
@@ -707,14 +737,14 @@
                     }
                 }, 3000);
             }
-            
+
             // 顯示匯款確認提醒彈窗
             function showPaymentReminderModal() {
                 // 確保彈窗樣式已注入
                 if (typeof injectModalStyles === 'function') {
                     injectModalStyles();
                 }
-                
+
                 const modal = document.createElement('div');
                 modal.className = 'member-modal member-warning-modal';
                 modal.innerHTML = `
@@ -732,9 +762,9 @@
                         </div>
                     </div>
                 `;
-                
+
                 document.body.appendChild(modal);
-                
+
                 return new Promise((resolve) => {
                     // 留下填寫按鈕
                     document.getElementById('stay-and-confirm').addEventListener('click', function() {
@@ -751,13 +781,13 @@
                         }
                         resolve(false); // 不離開
                     });
-                    
+
                     // 直接離開按鈕
                     document.getElementById('leave-anyway').addEventListener('click', function() {
                         modal.remove();
                         resolve(true); // 確認離開
                     });
-                    
+
                     // 點擊背景關閉 - 視為留下
                     modal.querySelector('.member-modal-overlay').addEventListener('click', function() {
                         modal.remove();
@@ -765,24 +795,24 @@
                     });
                 });
             }
-            
+
             // 檢查是否需要提醒的函數
             function checkPaymentReminder() {
                 // 只有轉帳付款且未確認時才需要提醒
                 return isTransferPayment && !isTransferConfirmed;
             }
-            
+
             // 為繼續購物和返回首頁按鈕添加提醒功能
             function addPaymentReminderToButtons() {
                 const actionButtons = document.querySelectorAll('.success-actions a');
-                
+
                 actionButtons.forEach(button => {
                     const originalHref = button.href;
-                    
+
                     button.addEventListener('click', function(e) {
                         if (checkPaymentReminder()) {
                             e.preventDefault();
-                            
+
                             showPaymentReminderModal().then(shouldLeave => {
                                 if (shouldLeave) {
                                     window.location.href = originalHref;
@@ -793,21 +823,21 @@
                     });
                 });
             }
-            
+
             // 為所有導航連結添加提醒功能
             function addPaymentReminderToNavigation() {
                 // 獲取所有可能離開頁面的連結
                 const navigationLinks = document.querySelectorAll('header a[href], nav a[href], .logo-container[href]');
-                
+
                 navigationLinks.forEach(link => {
                     const originalHref = link.href;
-                    
+
                     // 排除 # 連結和當前頁面連結
                     if (originalHref && !originalHref.includes('#') && !originalHref.includes('order-success.html')) {
                         link.addEventListener('click', function(e) {
                             if (checkPaymentReminder()) {
                                 e.preventDefault();
-                                
+
                                 showPaymentReminderModal().then(shouldLeave => {
                                     if (shouldLeave) {
                                         window.location.href = originalHref;
@@ -818,7 +848,7 @@
                     }
                 });
             }
-            
+
             // 為瀏覽器返回/離開事件添加提醒
             function addPaymentReminderToPageLeave() {
                 window.addEventListener('beforeunload', function(e) {
@@ -830,22 +860,22 @@
                     }
                 });
             }
-            
+
             // 初始化匯款提醒功能
             function initPaymentReminder() {
                 if (isTransferPayment) {
                     addPaymentReminderToButtons();
                     addPaymentReminderToNavigation();
                     addPaymentReminderToPageLeave();
-                    
+
                     console.log('匯款確認提醒功能已啟用');
                 }
             }
-            
+
             // 檢查用戶是否已登入，並更新帳戶關聯提示
             function checkLoginStatus() {
                 const accountReminderContent = document.getElementById('account-reminder-content');
-                
+
                 if (window.firebaseServices && window.firebaseServices.auth) {
                     window.firebaseServices.onAuthStateChanged(window.firebaseServices.auth, function(user) {
                         if (user) {
@@ -858,7 +888,7 @@
                             accountReminderContent.innerHTML = `
                                 <p>建議您<a href="#" id="remind-login-btn">登入會員帳戶</a>以便追蹤訂單進度。</p>
                             `;
-                            
+
                             // innerHTML 是同步賦值，remind-login-btn 這時已經在 DOM 上了，不需要延遲
                             const remindLoginBtn = document.getElementById('remind-login-btn');
                             if (remindLoginBtn) {
@@ -877,20 +907,20 @@
                     `;
                 }
             }
-            
+
             // 如果是加購訂單，修改顯示內容
             if (isAddon) {
                 // 修改標題和訊息
                 document.querySelector('.success-section h2').textContent = '加購訂單已成功處理！';
-                document.querySelector('.success-message').textContent = 
+                document.querySelector('.success-message').textContent =
                     `感謝您的加購！原訂單已更新，新增商品將與原訂單一起配送。`;
-                
+
                 // 修改付款通知文字
                 if (priceDifference > 0) {
                     const paymentNotice = document.getElementById('payment-notice');
                     const transferNoticeTitle = paymentNotice.querySelector('h3');
                     transferNoticeTitle.textContent = '加購差價付款通知';
-                    
+
                     // 修改付款說明
                     const transferNoticeDiv = document.getElementById('transfer-notice');
                     if (transferNoticeDiv) {
@@ -898,7 +928,7 @@
                         if (firstP) {
                             firstP.innerHTML = `請在 24 小時內完成差價 <strong>NT$ ${priceDifference}</strong> 的轉帳以確保加購商品能順利配送。`;
                         }
-                        
+
                         // 更新重要提示
                         const importantNote = transferNoticeDiv.querySelector('.important-note');
                         if (importantNote) {
@@ -912,7 +942,7 @@
                         paymentNotice.style.display = 'none';
                     }
                 }
-                
+
                 // 修改配送資訊
                 const shippingInfo = document.querySelector('.shipping-info');
                 if (shippingInfo) {
@@ -924,7 +954,7 @@
                     `;
                 }
             }
-            
+
             // 設置付款方式狀態
             isTransferPayment = (paymentMethod === 'transfer');
 
@@ -982,7 +1012,7 @@
             // 設置訂單日期
             let orderDate = lastOrder.orderDate || new Date().toISOString().split('T')[0];
             document.getElementById('order-date').textContent = orderDate;
-            
+
             // 更新付款方式信息
             const paymentMethodText = paymentMethod === 'credit' ? '信用卡' : 'ATM轉帳';
             document.getElementById('payment-method').textContent = paymentMethodText;
@@ -990,7 +1020,7 @@
             // 如果是轉帳，顯示轉帳信息和金額
             if (paymentMethod === 'transfer') {
                 document.getElementById('transfer-notice').style.display = 'block';
-                
+
                 const transferAmountElement = document.getElementById('transfer-amount');
                 if (transferAmountElement) {
                     if (isAddon && priceDifference > 0) {
@@ -1000,27 +1030,25 @@
                     }
                 }
             }
-            
+
             // 顯示歡迎訊息
             if (lastOrder.customerName) {
                 if (isAddon) {
-                    document.querySelector('.success-message').textContent = 
+                    document.querySelector('.success-message').textContent =
                         `${lastOrder.customerName} 您好，感謝您的加購！原訂單已更新，新增商品將與原訂單一起配送。`;
                 } else {
-                    document.querySelector('.success-message').textContent = 
+                    document.querySelector('.success-message').textContent =
                         `${lastOrder.customerName} 您好，感謝您選購杰の御果園的優質水果，我們將盡快安排出貨。`;
                 }
             }
-            
+
             // 檢查用戶是否已登入
             checkLoginStatus();
-            
-            // 清空購物車
-            localStorage.removeItem('cart');
-            
-            // 更新購物車計數
+
+            // 購物車在訂單成立當下（js/payment.js）就已經清空了。這裡以前每次載入都再清一次：
+            // 顧客下完單又挑了新商品，用「上一頁」回到這裡就會被清空，而且完全不會知道發生什麼事
             updateCartCount();
-            
+
             // 處理匯款確認表單
             const paymentConfirmForm = document.getElementById('payment-confirm-form');
             const confirmationMessage = document.getElementById('transfer-confirmation-message');
@@ -1046,135 +1074,137 @@
             if (paymentConfirmForm) {
                 paymentConfirmForm.addEventListener('submit', async function(e) {
                     e.preventDefault();
-                    
+
+                    const submitBtn = paymentConfirmForm.querySelector('button[type="submit"]');
+                    const originalBtnHTML = submitBtn ? submitBtn.innerHTML : '';
+
                     // 獲取表單數據
-                    const lastFiveDigits = document.getElementById('transfer-last-5-digits').value;
+                    const lastFiveDigits = document.getElementById('transfer-last-5-digits').value.trim();
                     const transferDate = document.getElementById('transfer-date').value;
-                    const transferNote = document.getElementById('transfer-note').value;
-                    
-                    // 獲取訂單編號
+                    const transferNote = document.getElementById('transfer-note').value.trim();
                     const orderNumber = document.getElementById('order-number').textContent;
-                    
-                    // 顯示確認信息
-                    const confirmationForm = document.getElementById('transfer-confirmation-form');
-                    
-                    if (confirmationForm) {
-                        confirmationForm.classList.add('transfer-confirmed');
-                        paymentConfirmForm.style.display = 'none';
-                        
-                        // 顯示確認信息摘要
-                        const confirmedHTML = `
-                            <div class="confirmed-info">
-                                <p><strong>匯款末5碼:</strong> ${lastFiveDigits}</p>
-                                <p><strong>匯款日期:</strong> ${transferDate}</p>
-                                ${transferNote ? `<p><strong>備註:</strong> ${transferNote}</p>` : ''}
-                                <p><strong>確認時間:</strong> ${new Date().toLocaleString()}</p>
-                                <p class="confirmation-thankyou">感謝您的匯款確認，我們將盡快處理您的訂單！</p>
-                            </div>
-                        `;
-                        
-                        confirmationMessage.innerHTML = confirmedHTML;
-                        confirmationMessage.style.display = 'block';
-                        
-                        // 設置匯款確認狀態為已完成
-                        isTransferConfirmed = true;
-                        
-                        // 顯示成功彈窗
-                        showTransferConfirmationModal();
-                        
-                        // 將匯款信息保存到 localStorage 和 Firestore
-                        try {
-                            // 創建匯款記錄對象
-                            const transferRecord = {
-                                orderNumber: orderNumber,
-                                lastFiveDigits: lastFiveDigits,
-                                transferDate: transferDate,
-                                transferNote: transferNote,
-                                confirmTime: new Date().toISOString()
-                            };
-                            
-                            // 將記錄添加到 localStorage
-                            let transferRecords = localStorage.getItem('transferRecords') || '[]';
-                            transferRecords = JSON.parse(transferRecords);
-                            transferRecords.push(transferRecord);
-                            localStorage.setItem('transferRecords', JSON.stringify(transferRecords));
-                            
-                            // 從 sessionStorage 獲取訂單 ID
-                            const lastOrderJSON = sessionStorage.getItem('lastOrder');
-                            if (lastOrderJSON && window.firebaseServices) {
-                                const lastOrder = JSON.parse(lastOrderJSON);
-                                const orderId = lastOrder.id || urlParams.get('orderId');
-                                
-                                if (orderId) {
-                                    // 生成匯款備註訊息
-                                    let paymentNote;
-                                    if (isAddon && priceDifference > 0) {
-                                        // 加購訂單的匯款備註
-                                        paymentNote = `【加購差價匯款確認 - ${new Date().toLocaleString()}】
+
+                    // 找出這筆訂單的 ID
+                    let orderId = urlParams.get('orderId');
+                    try {
+                        const lastOrderJSON = sessionStorage.getItem('lastOrder');
+                        if (lastOrderJSON) orderId = JSON.parse(lastOrderJSON).id || orderId;
+                    } catch (error) {
+                        console.warn('讀取 lastOrder 失敗:', error);
+                    }
+
+                    if (!orderId || !window.firebaseServices) {
+                        alert('找不到訂單資料，無法送出匯款回報。請到「訂單記錄」頁面的備註欄填寫匯款資訊，或聯絡客服。');
+                        return;
+                    }
+
+                    if (submitBtn) {
+                        submitBtn.disabled = true;
+                        submitBtn.textContent = '送出中...';
+                    }
+
+                    // 生成匯款備註訊息
+                    const now = new Date().toLocaleString('zh-TW');
+                    const paymentNote = (isAddon && priceDifference > 0)
+                        ? `【加購差價匯款確認 - ${now}】
 匯款末5碼: ${lastFiveDigits}
 匯款日期: ${transferDate}
 匯款金額: NT$ ${priceDifference}
 備註: ${transferNote || '無'}
-確認時間: ${new Date().toLocaleString()}`;
-                                    } else {
-                                        // 一般訂單的匯款備註
-                                        paymentNote = `【匯款確認 - ${new Date().toLocaleString()}】
+確認時間: ${now}`
+                        : `【匯款確認 - ${now}】
 匯款末5碼: ${lastFiveDigits}
 匯款日期: ${transferDate}
 備註: ${transferNote || '無'}
-確認時間: ${new Date().toLocaleString()}`;
-                                    }
-                                    
-                                    try {
-                                        // 獲取現有訂單文檔
-                                        const orderDocRef = window.firebaseServices.doc(window.firebaseServices.db, 'orders', orderId);
-                                        const orderDoc = await window.firebaseServices.getDoc(orderDocRef);
-                                        
-                                        if (orderDoc.exists()) {
-                                            const orderData = orderDoc.data();
-                                            // 合併現有備註與新的匯款備註
-                                            const existingNotes = orderData.notes || '';
-                                            const updatedNotes = existingNotes ? existingNotes + '\n\n' + paymentNote : paymentNote;
-                                            
-                                            // 更新訂單備註
-                                            // 加購差價的付款狀態獨立寫 addonPaymentConfirmed，不要沿用
-                                            // paymentConfirmed——一般訂單這時候通常早就已經是 true 了
-                                            // （已經確認過原本的付款），沿用同一個欄位不會發生
-                                            // false→true 的轉變，後台的匯款回報通知就不會寄出
-                                            const paymentUpdate = { notes: updatedNotes };
-                                            if (isAddon && priceDifference > 0) {
-                                                paymentUpdate.addonPaymentConfirmed = true;
-                                                paymentUpdate.addonPaymentConfirmTime = window.firebaseServices.serverTimestamp();
-                                            } else {
-                                                paymentUpdate.paymentConfirmed = true;
-                                                paymentUpdate.paymentConfirmTime = window.firebaseServices.serverTimestamp();
-                                            }
-                                            await window.firebaseServices.updateDoc(orderDocRef, paymentUpdate);
-                                            
-                                            console.log('匯款確認已成功記錄並更新至訂單備註');
-                                        } else {
-                                            console.error('找不到訂單文檔:', orderId);
-                                        }
-                                    } catch (error) {
-                                        console.error('更新訂單備註時出錯:', error);
-                                    }
-                                }
-                            }
-                        } catch (error) {
-                            console.error('儲存匯款記錄時出錯:', error);
+確認時間: ${now}`;
+
+                    // 先寫進訂單，確定成功了才顯示「已回報」。以前是先顯示成功畫面、
+                    // 寫入失敗只記在 console，顧客以為回報成功了，實際上店家什麼都沒收到
+                    try {
+                        const orderDocRef = window.firebaseServices.doc(window.firebaseServices.db, 'orders', orderId);
+                        const orderDoc = await window.firebaseServices.getDoc(orderDocRef);
+                        if (!orderDoc.exists()) {
+                            throw new Error('找不到訂單資料');
                         }
+
+                        const existingNotes = orderDoc.data().notes || '';
+                        const updatedNotes = existingNotes ? existingNotes + '\n\n' + paymentNote : paymentNote;
+
+                        // 加購差價的付款狀態獨立寫 addonPaymentConfirmed，不要沿用
+                        // paymentConfirmed——一般訂單這時候通常早就已經是 true 了
+                        // （已經確認過原本的付款），沿用同一個欄位不會發生
+                        // false→true 的轉變，後台的匯款回報通知就不會寄出
+                        const paymentUpdate = { notes: updatedNotes };
+                        if (isAddon && priceDifference > 0) {
+                            paymentUpdate.addonPaymentConfirmed = true;
+                            paymentUpdate.addonPaymentConfirmTime = window.firebaseServices.serverTimestamp();
+                        } else {
+                            paymentUpdate.paymentConfirmed = true;
+                            paymentUpdate.paymentConfirmTime = window.firebaseServices.serverTimestamp();
+                        }
+                        await window.firebaseServices.updateDoc(orderDocRef, paymentUpdate);
+                        console.log('匯款確認已成功記錄並更新至訂單備註');
+                    } catch (error) {
+                        console.error('送出匯款回報失敗:', error);
+                        alert('匯款回報送出失敗，請檢查網路連線後再試一次。\n如果一直失敗，請到「訂單記錄」頁面的備註欄填寫匯款資訊，或透過 LINE 聯絡我們。');
+                        if (submitBtn) {
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = originalBtnHTML;
+                        }
+                        return;
                     }
+
+                    // 本機也留一份紀錄
+                    try {
+                        const transferRecords = JSON.parse(localStorage.getItem('transferRecords') || '[]');
+                        transferRecords.push({
+                            orderNumber: orderNumber,
+                            lastFiveDigits: lastFiveDigits,
+                            transferDate: transferDate,
+                            transferNote: transferNote,
+                            confirmTime: new Date().toISOString()
+                        });
+                        localStorage.setItem('transferRecords', JSON.stringify(transferRecords));
+                    } catch (error) {
+                        console.warn('儲存本機匯款記錄失敗:', error);
+                    }
+
+                    // 顯示確認信息摘要（顧客輸入的內容一律跳脫）
+                    const confirmationForm = document.getElementById('transfer-confirmation-form');
+                    if (confirmationForm) {
+                        confirmationForm.classList.add('transfer-confirmed');
+                    }
+                    paymentConfirmForm.style.display = 'none';
+                    confirmationMessage.innerHTML = `
+                        <div class="confirmed-info">
+                            <p><strong>匯款末5碼:</strong> ${window.escapeHtml(lastFiveDigits)}</p>
+                            <p><strong>匯款日期:</strong> ${window.escapeHtml(transferDate)}</p>
+                            ${transferNote ? `<p><strong>備註:</strong> ${window.escapeHtml(transferNote)}</p>` : ''}
+                            <p><strong>確認時間:</strong> ${now}</p>
+                            <p class="confirmation-thankyou">感謝您的匯款確認，我們將盡快處理您的訂單！</p>
+                        </div>
+                    `;
+                    confirmationMessage.style.display = 'block';
+
+                    // 設置匯款確認狀態為已完成
+                    isTransferConfirmed = true;
+
+                    // 顯示成功彈窗
+                    showTransferConfirmationModal();
                 });
             }
 
             // 設置默認匯款日期為今天
             const transferDateInput = document.getElementById('transfer-date');
             if (transferDateInput) {
-                const today = new Date().toISOString().split('T')[0];
+                // 用本地時間：toISOString() 是 UTC，台灣早上 8 點前會變成前一天，
+                // 連帶 max 也變成昨天，顧客就選不到「今天」
+                const now = new Date();
+                const today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
                 transferDateInput.value = today;
                 transferDateInput.max = today; // 不允許選擇未來日期
             }
-            
+
             // DOMContentLoaded 已保證所有元素都已載入，不需要再延遲
             initPaymentReminder();
         });

@@ -2,6 +2,14 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
+    <!-- firebase-warmup：讓瀏覽器一開始解析頁面就先跟 Firebase 握手、下載 SDK，
+         不用等到下面載入 Firebase 的 module 腳本才開始。版本號要跟 import 的一致。 -->
+    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-lite.js">
     <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="images/favicon-16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="images/apple-touch-icon.png">
@@ -11,20 +19,20 @@
     <meta name="description" content="杰の御果園提供台灣高山優質水果，新鮮直送到府。精選梨子、水蜜桃、蘋果及各式水果禮盒，品質保證。">
     <meta name="keywords" content="台灣水果,高山水果,新鮮水果,水果禮盒,梨子,水蜜桃,蘋果,杰の御果園,果園直送,有機水果">
     <meta name="author" content="杰の御果園">
-    
+
     <!-- Open Graph 標籤 -->
     <meta property="og:title" content="杰の御果園 - 優質台灣高山水果直送">
     <meta property="og:description" content="台灣高山優質水果，新鮮直送到府。精選梨子、水蜜桃、蘋果及各式水果禮盒，品質保證。">
     <meta property="og:image" content="https://jayfarmer.tw/images/logo.jpg">
     <meta property="og:url" content="https://jayfarmer.tw/profile.html">
     <meta property="og:type" content="website">
-    
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/common.css">
-    <link rel="stylesheet" href="css/cart.css">
-    <link rel="stylesheet" href="css/auth-modals.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    
+
+    <link rel="stylesheet" href="css/style.css?v=20261014">
+    <link rel="stylesheet" href="css/common.css?v=20261014">
+    <link rel="stylesheet" href="css/cart.css?v=20261014">
+    <link rel="stylesheet" href="css/auth-modals.css?v=20261014">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer">
+
     <style>
 /* 會員資料頁面樣式 */
 .profile-section {
@@ -302,21 +310,21 @@
     .profile-content {
         flex-direction: column;
     }
-    
+
     .profile-sidebar {
         max-width: 100%;
         margin-bottom: 20px;
     }
-    
+
     .form-row {
         flex-direction: column;
         gap: 0;
     }
-    
+
     .profile-section {
         padding: 30px 0;
     }
-    
+
     .profile-card {
         padding: 20px;
     }
@@ -326,7 +334,7 @@
     .profile-section {
         padding: 20px 0;
     }
-    
+
     .profile-card {
         padding: 15px;
     }
@@ -334,14 +342,14 @@
 </style>
 
     <!-- Firebase SDK引入 - 使用統一版本 10.7.1 -->
-    <script src="js/firebase-config.js"></script>
+    <script src="js/firebase-config.js?v=20261014"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { 
-            getAuth, 
-            createUserWithEmailAndPassword, 
-            signInWithEmailAndPassword, 
-            signOut, 
+        import {
+            getAuth,
+            createUserWithEmailAndPassword,
+            signInWithEmailAndPassword,
+            signOut,
             onAuthStateChanged,
             sendSignInLinkToEmail,
             isSignInWithEmailLink,
@@ -357,33 +365,36 @@
             signInWithCredential,
             signInWithCustomToken
         } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { 
-            initializeFirestore, 
-            collection, 
-            doc, 
-            setDoc, 
+        import {
+            initializeFirestore,
+            terminate,
+            collection,
+            doc,
+            setDoc,
             getDoc,
             getDocs,
-            getDocsFromServer,
+            getDocs as getDocsFromServer,
             updateDoc,
             query,
             orderBy,
             where,
-            serverTimestamp 
-        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-        
+            serverTimestamp
+        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-lite.js";
+
         // Firebase配置 - 統一使用與其他頁面相同的配置
         const firebaseConfig = window.FIREBASE_CONFIG;
-        
+
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        // 自動偵測目前網路環境是否會擋掉預設的串流連線，會的話自動改用相容性更好的
-        // 長輪詢，降低連線逾時、被誤判成「查無資料」的機率
-        const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
-        
+        // 連線設定統一放在 js/firebase-config.js 的 FIRESTORE_SETTINGS（原因寫在那裡）
+        const db = initializeFirestore(app, window.FIRESTORE_SETTINGS);
+
         window.firebaseServices = {
             auth: auth,
             db: db,
+            app: app,
+            initializeFirestore,
+            terminate,
             getAuth,
             createUserWithEmailAndPassword,
             signInWithEmailAndPassword,
@@ -415,6 +426,7 @@
             signInWithCustomToken
         };
     </script>
+    <link rel="stylesheet" href="css/storefront.css?v=20261014">
 </head>
 <body>
     <header>
@@ -423,7 +435,7 @@
             <button class="menu-toggle" id="menu-toggle">
                 <i class="fas fa-bars"></i>
             </button>
-            
+
             <a href="index.html" class="logo-container">
                 <img src="images/logo.jpg" alt="杰の御果園 logo" width="492" height="649" class="logo-image">
                 <div class="logo">
@@ -431,7 +443,7 @@
                     <p>新鮮直送・品質保證</p>
                 </div>
             </a>
-            
+
             <!-- 手機版頂部購物車 -->
             <div class="mobile-header-actions">
                 <div class="cart-icon-container">
@@ -441,7 +453,7 @@
                     </a>
                 </div>
             </div>
-            
+
             <!-- 導航選單 -->
             <nav id="main-nav">
                 <ul>
@@ -449,14 +461,14 @@
                     <li><a href="products.html">商品</a></li>
                     <li><a href="about.html">關於果園</a></li>
                     <li><a href="contact.html">聯絡我們</a></li>
-                    
+
                     <!-- 手機版選單中的操作選項 -->
                     <div class="mobile-actions">
                         <!-- 會員系統 - 未登入狀態 -->
                         <div class="user-actions" id="user-actions-mobile">
                             <a href="#" class="btn-login" id="login-btn-mobile">登入</a>
                         </div>
-                        
+
                         <!-- 會員系統 - 已登入狀態 (手機版) -->
                         <div class="user-profile-mobile" id="user-profile-mobile">
                             <div class="user-info">
@@ -474,7 +486,7 @@
                     </div>
                 </ul>
             </nav>
-            
+
             <!-- 桌面版右側元素 -->
             <div class="header-right">
                 <!-- 購物車圖標 -->
@@ -484,12 +496,12 @@
                         <span class="cart-count" id="cart-count">0</span>
                     </a>
                 </div>
-                
+
                 <!-- 會員系統 - 未登入狀態 -->
                 <div class="user-actions" id="user-actions">
                     <a href="#" class="btn-login" id="login-btn">登入</a>
                 </div>
-                
+
                 <!-- 會員系統 - 已登入狀態 -->
                 <div class="user-profile" id="user-profile">
                     <div class="user-name" id="user-dropdown-btn">
@@ -508,12 +520,12 @@
             </div>
         </div>
     </header>
-    
+
     <!-- 半透明背景覆蓋 (用於手機版選單) -->
     <div class="menu-overlay" id="menu-overlay"></div>
-    
+
     <!-- 彈窗會由 auth-modals.js 動態創建 -->
-    
+
     <main>
         <section class="product-hero profile-banner">
             <div class="container">
@@ -521,7 +533,7 @@
                 <p>管理您的個人資訊</p>
             </div>
         </section>
-        
+
         <section class="profile-section">
             <div class="container profile-container">
                 <div class="profile-content">
@@ -536,13 +548,13 @@
                             </ul>
                         </div>
                     </div>
-                    
+
                     <div class="profile-main">
                         <div id="profile-message" class="message"></div>
-                        
+
                         <div class="profile-card">
                             <h3>個人資料</h3>
-                            
+
                             <form id="profile-form">
                                 <div class="form-row">
                                     <div class="form-group">
@@ -558,7 +570,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <div class="form-row">
                                     <div class="form-group">
                                         <label for="phone">聯絡電話</label>
@@ -571,7 +583,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <div class="form-group">
                                     <label for="city">縣市</label>
                                     <select id="city" name="city"></select>
@@ -587,7 +599,7 @@
                                         <input type="text" id="address" name="address" placeholder="例：中山路123號">
                                     </div>
                                 </div>
-                                
+
                                 <div class="form-footer">
                                     <button type="submit" class="btn btn-primary">儲存變更</button>
                                 </div>
@@ -598,42 +610,60 @@
             </div>
         </section>
     </main>
-    
-    <footer>
+
+    <footer class="site-footer">
         <div class="container">
             <div class="footer-content">
                 <div class="footer-section">
-                    <h3>粉絲專頁</h3>
-                    <p>為您提供最優質的水果選擇</p>
+                    <h3>杰の御果園</h3>
+                    <p>梨山高山果園直營，新鮮直送到府</p>
                     <div class="social-links">
-                        <a href="https://www.facebook.com/jay0955688658" target="_blank" title="Facebook 粉絲頁"><i class="fab fa-facebook"></i></a>
-                        <a href="https://line.me/R/ti/p/@farmer-jay" target="_blank" title="LINE官方帳號"><i class="fab fa-line"></i></a>
+                        <a href="https://www.facebook.com/jay0955688658" target="_blank" rel="noopener" title="Facebook 粉絲專頁" aria-label="Facebook 粉絲專頁"><i class="fab fa-facebook"></i></a>
+                        <a href="https://line.me/R/ti/p/@farmer-jay" target="_blank" rel="noopener" title="LINE 官方帳號" aria-label="LINE 官方帳號"><i class="fab fa-line"></i></a>
                     </div>
                 </div>
-                
+
+                <div class="footer-section">
+                    <h3>水果分類</h3>
+                    <ul class="footer-links">
+                        <li><a href="products.html?category=peach">水蜜桃</a></li>
+                        <li><a href="products.html?category=persimmon">甜柿</a></li>
+                        <li><a href="products.html?category=pear">梨子</a></li>
+                        <li><a href="products.html?category=apple">蘋果</a></li>
+                        <li><a href="products.html?category=gift">禮盒</a></li>
+                        <li><a href="products.html">所有商品 &raquo;</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h3>顧客服務</h3>
+                    <ul class="footer-links">
+                        <li><a href="about.html">關於果園</a></li>
+                        <li><a href="contact.html">聯絡我們</a></li>
+                        <li><a href="orders.html">訂單查詢</a></li>
+                        <li><a href="cart.html">購物車</a></li>
+                    </ul>
+                </div>
+
                 <div class="footer-section">
                     <h3>聯絡資訊</h3>
-                    <p><a href="https://line.me/R/ti/p/@farmer-jay" target="_blank" style="color: #06c755; text-decoration: none;"><i class="fab fa-line"></i> LINE 官方帳號：@farmer-jay</a></p>
+                    <p><a href="https://line.me/R/ti/p/@farmer-jay" target="_blank" rel="noopener" style="color: #06c755;"><i class="fab fa-line"></i> LINE 官方帳號：@farmer-jay</a></p>
                     <p><i class="fas fa-map-marker-alt"></i> 果園地址：台中市和平區環山</p>
-                </div>
-                
-                <div class="footer-section">
-                    <h3>客服時間</h3>
-                    <p><i class="far fa-clock"></i> 週一至週五：9:00 - 18:00</p>
+                    <p><i class="far fa-clock"></i> 客服時間：週一至週五 9:00 - 18:00</p>
                 </div>
             </div>
-            
+
             <div class="copyright">
                 <p>&copy; 2025 杰の御果園。保留所有權利。</p>
             </div>
         </div>
     </footer>
-    
+
     <!-- 引入彈窗管理器 -->
-    <script src="js/auth-modals.js"></script>
-    <script src="js/common.js"></script>
-    <script src="js/member.js"></script>
-    <script src="js/tw-districts.js"></script>
+    <script src="js/auth-modals.js?v=20261014"></script>
+    <script src="js/common.js?v=20261014"></script>
+    <script src="js/member.js?v=20261014"></script>
+    <script src="js/tw-districts.js?v=20261014"></script>
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -643,10 +673,10 @@
             window.location.href = 'index.html';
             return;
         }
-        
+
         // 全局變量存儲用戶提供者類型
         let userProvider = 'email';
-        
+
         // 獲取DOM元素
         const profileForm = document.getElementById('profile-form');
         const profileMessage = document.getElementById('profile-message');
@@ -656,7 +686,7 @@
         const twDistrictSelect = window.initTWDistrictSelect
             ? window.initTWDistrictSelect('city', 'district')
             : null;
-        
+
         // 強化版欄位權限設定
         function setFieldPermissions(provider, userData) {
             console.log('=== 強化版權限設定 ===');
@@ -689,7 +719,7 @@
                 if (emailLabel) emailLabel.textContent = '電子郵件';
                 emailProviderInfo.style.display = 'none';
                 phoneProviderInfo.style.display = 'none';
-                
+
                 // 根據提供者設定權限
                 switch(provider) {
                     case 'google':
@@ -701,13 +731,13 @@
                         emailProviderBadge.className = 'provider-badge google';
                         emailProviderBadge.innerHTML = '<i class="fab fa-google"></i> Google 帳號';
                         emailReadonlyNote.style.display = 'block';
-                        
+
                         // 防止用戶修改
                         emailField.addEventListener('keydown', preventEdit);
                         emailField.addEventListener('paste', preventEdit);
                         emailField.addEventListener('cut', preventEdit);
                         break;
-                        
+
                     case 'facebook':
                         console.log('設定 Facebook 權限 - Email 唯讀');
                         emailField.setAttribute('readonly', true);
@@ -717,13 +747,13 @@
                         emailProviderBadge.className = 'provider-badge facebook';
                         emailProviderBadge.innerHTML = '<i class="fab fa-facebook-f"></i> Facebook 帳號';
                         emailReadonlyNote.style.display = 'block';
-                        
+
                         // 防止用戶修改
                         emailField.addEventListener('keydown', preventEdit);
                         emailField.addEventListener('paste', preventEdit);
                         emailField.addEventListener('cut', preventEdit);
                         break;
-                        
+
                     case 'line':
                         // LINE 登入沒有申請 email 權限，這個欄位原本會是空的，改成
                         // 顯示 LINE ID 讓這格不要空著沒意義；順便把 type 從 email
@@ -754,43 +784,43 @@
                         phoneField.style.backgroundColor = '#f9f9f9';
                         phoneProviderInfo.style.display = 'block';
                         phoneReadonlyNote.style.display = 'block';
-                        
+
                         // 防止用戶修改
                         phoneField.addEventListener('keydown', preventEdit);
                         phoneField.addEventListener('paste', preventEdit);
                         phoneField.addEventListener('cut', preventEdit);
                         break;
-                        
+
                     case 'email':
                     default:
                         console.log('設定 Email 權限 - 所有欄位可編輯');
                         // 所有欄位都可編輯，無需特殊處理
                         break;
                 }
-                
+
                 console.log('權限設定完成');
             }, 100);
         }
-        
+
         // 防止編輯函數
         function preventEdit(e) {
             e.preventDefault();
             return false;
         }
-        
+
         // 檢測用戶註冊方式
         function detectUserProvider(user) {
             console.log('=== 檢測用戶註冊方式 ===');
             console.log('用戶物件:', user);
             console.log('providerData:', user.providerData);
-            
+
             let provider = 'email'; // 預設值
-            
+
             // 檢查 providerData
             if (user.providerData && user.providerData.length > 0) {
                 const mainProvider = user.providerData[0];
                 console.log('主要提供者:', mainProvider);
-                
+
                 switch(mainProvider.providerId) {
                     case 'google.com':
                         provider = 'google';
@@ -807,7 +837,7 @@
                         break;
                 }
             }
-            
+
             // 特殊情況：電話號碼登入但沒有 email
             if (user.phoneNumber && !user.email) {
                 provider = 'phone';
@@ -824,7 +854,7 @@
             console.log('最終判定提供者:', provider);
             return provider;
         }
-        
+
         // 監聽認證狀態變化
         firebaseServices.onAuthStateChanged(firebaseServices.auth, function(user) {
             if (user) {
@@ -834,20 +864,33 @@
                 window.location.href = 'index.html';
             }
         });
-        
+
+        // 資料有沒有成功讀到。讀取失敗時表單幾乎是空的，這時按「儲存」會用 merge
+        // 把姓名、電話、地址整個用空白蓋掉，所以讀到之前不允許儲存
+        let profileLoaded = false;
+        const setProfileSubmitEnabled = function(enabled, label) {
+            const submitBtn = profileForm ? profileForm.querySelector('button[type="submit"]') : null;
+            if (!submitBtn) return;
+            submitBtn.disabled = !enabled;
+            submitBtn.textContent = label || '儲存變更';
+        };
+        setProfileSubmitEnabled(false, '載入中...');
+
         // 加載用戶個人資料
         function loadUserProfile(user) {
             const uid = user.uid;
             const db = firebaseServices.db;
             const doc = firebaseServices.doc;
             const getDoc = firebaseServices.getDoc;
-            
+
             // 設置電子郵件欄位
             document.getElementById('email').value = user.email || '';
-            
+
             // 從 Firestore 獲取用戶資料
-            getDoc(doc(db, 'users', uid))
+            window.withReadTimeout(getDoc(doc(db, 'users', uid)))
                 .then((docSnap) => {
+                    profileLoaded = true;
+                    setProfileSubmitEnabled(true);
                     if (docSnap.exists()) {
                         // 有用戶資料，填充表單
                         const userData = docSnap.data();
@@ -857,15 +900,15 @@
                             twDistrictSelect.setValue(userData.city || '', userData.district || '');
                         }
                         document.getElementById('address').value = userData.address || '';
-                        
+
                         // 使用資料庫中保存的提供者類型，如果沒有則使用檢測到的
                         const savedProvider = userData.provider || userProvider;
                         console.log('資料庫中的提供者:', savedProvider);
                         setFieldPermissions(savedProvider, userData);
-                        
+
                     } else {
                         console.log('用戶資料不存在，將創建新的用戶資料');
-                        
+
                         // 設定預設名稱
                         let defaultName = '';
                         if (user.email) {
@@ -879,7 +922,7 @@
                             defaultName = user.displayName || 'LINE 用戶';
                             document.getElementById('name').value = defaultName;
                         }
-                        
+
                         // 創建用戶資料並保存註冊方式
                         const initialUserData = {
                             name: defaultName,
@@ -917,7 +960,8 @@
                 })
                 .catch((error) => {
                     console.error('獲取用戶資料時出錯:', error);
-                    showMessage(profileMessage, '獲取用戶資料時出錯: ' + error.message, 'error');
+                    showMessage(profileMessage, '資料讀取失敗，請重新整理頁面後再修改（為了避免空白資料蓋掉您原本的資料，目前無法儲存）', 'error');
+                    setProfileSubmitEnabled(false, '資料讀取失敗，請重新整理頁面');
 
                     // 即使出錯也要設定基本權限
                     setFieldPermissions(userProvider, {
@@ -925,24 +969,28 @@
                     });
                 });
         }
-        
+
         // 處理個人資料表單提交
         if (profileForm) {
             profileForm.addEventListener('submit', function(e) {
                 e.preventDefault();
-                
+
                 const user = firebaseServices.auth.currentUser;
                 if (!user) {
                     showMessage(profileMessage, '請先登入', 'error');
                     return;
                 }
-                
+                if (!profileLoaded) {
+                    showMessage(profileMessage, '資料還沒讀取成功，請重新整理頁面後再儲存', 'error');
+                    return;
+                }
+
                 // 禁用提交按鈕，防止重複提交
                 const submitBtn = profileForm.querySelector('button[type="submit"]');
                 const originalBtnText = submitBtn.textContent;
                 submitBtn.disabled = true;
                 submitBtn.textContent = '儲存中...';
-                
+
                 // 獲取表單數據（唯讀欄位值不會被修改）
                 const name = document.getElementById('name').value;
                 const phone = document.getElementById('phone').value;
@@ -966,23 +1014,23 @@
                 if (userProvider !== 'line') {
                     userData.email = email;
                 }
-                
+
                 // 更新 Firestore 中的用戶資料
                 const userDocRef = firebaseServices.doc(firebaseServices.db, 'users', user.uid);
-                
+
                 firebaseServices.setDoc(userDocRef, userData, { merge: true })
                     .then(() => {
                         console.log('用戶資料已更新');
                         // 更新本地存儲的用戶名
                         localStorage.setItem('userName', name);
-                        
+
                         // 更新頁面顯示的用戶名
                         const usernameDisplay = document.getElementById('username-display');
                         const usernameDisplayMobile = document.getElementById('username-display-mobile');
-                        
+
                         if (usernameDisplay) usernameDisplay.textContent = name;
                         if (usernameDisplayMobile) usernameDisplayMobile.textContent = name;
-                        
+
                         // 顯示成功彈窗
                         showSuccessMessage();
                     })
@@ -997,7 +1045,7 @@
                     });
             });
         }
-        
+
         // 顯示成功訊息彈窗
         function showSuccessMessage() {
             const successMessage = document.createElement('div');
@@ -1011,9 +1059,9 @@
                 </div>
                 <div class="success-overlay" onclick="closeSuccessMessage()"></div>
             `;
-            
+
             document.body.appendChild(successMessage);
-            
+
             // 添加樣式
             if (!document.querySelector('#profile-success-styles')) {
                 const styles = document.createElement('style');
@@ -1030,7 +1078,7 @@
                         align-items: center;
                         justify-content: center;
                     }
-                    
+
                     .success-overlay {
                         position: absolute;
                         top: 0;
@@ -1039,7 +1087,7 @@
                         height: 100%;
                         background: rgba(0, 0, 0, 0.5);
                     }
-                    
+
                     .success-content {
                         background: white;
                         padding: 2rem;
@@ -1051,25 +1099,25 @@
                         z-index: 1;
                         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
                     }
-                    
+
                     .success-content i {
                         font-size: 3rem;
                         color: #4caf50;
                         margin-bottom: 1rem;
                         animation: checkAnimation 0.6s ease-in-out;
                     }
-                    
+
                     @keyframes checkAnimation {
                         0% { transform: scale(0); }
                         50% { transform: scale(1.2); }
                         100% { transform: scale(1); }
                     }
-                    
+
                     .success-content h3 {
                         color: #2c3e50;
                         margin: 0 0 1rem 0;
                     }
-                    
+
                     .success-content p {
                         color: #666;
                         margin: 0 0 1.5rem 0;
@@ -1078,12 +1126,12 @@
                 `;
                 document.head.appendChild(styles);
             }
-            
+
             setTimeout(() => {
                 closeSuccessMessage();
             }, 3000);
         }
-        
+
         // 關閉成功訊息
         function closeSuccessMessage() {
             const successMessage = document.querySelector('.profile-success-message');
@@ -1091,10 +1139,10 @@
                 successMessage.remove();
             }
         }
-        
+
         // 將關閉函數暴露到全域
         window.closeSuccessMessage = closeSuccessMessage;
-        
+
         // 側邊欄登出按鈕功能
         if (sidebarLogoutBtn) {
             sidebarLogoutBtn.addEventListener('click', function(e) {
@@ -1102,25 +1150,25 @@
                 handleLogout();
             });
         }
-        
+
         // 處理登出按鈕
         const logoutBtn = document.getElementById('logout-btn');
         const logoutBtnMobile = document.getElementById('logout-btn-mobile');
-        
+
         if (logoutBtn) {
             logoutBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 handleLogout();
             });
         }
-        
+
         if (logoutBtnMobile) {
             logoutBtnMobile.addEventListener('click', function(e) {
                 e.preventDefault();
                 handleLogout();
             });
         }
-        
+
         // 統一的登出處理函數
         function handleLogout() {
             console.log("執行登出");
@@ -1138,24 +1186,24 @@
                     alert('登出失敗: ' + error.message);
                 });
         }
-        
+
         // 顯示訊息函數
         function showMessage(element, message, type) {
             element.textContent = message;
             element.className = 'message ' + type;
             element.style.display = 'block';
-            
+
             if (type === 'success') {
                 setTimeout(() => {
                     element.style.display = 'none';
                 }, 3000);
             }
         }
-        
+
         // 修復下拉選單功能
         const userDropdownBtn = document.getElementById('user-dropdown-btn');
         const userMenu = document.getElementById('user-menu');
-        
+
         if (userDropdownBtn && userMenu) {
             userDropdownBtn.addEventListener('click', function(e) {
                 e.preventDefault();
@@ -1169,20 +1217,20 @@
                 }
             });
         }
-        
+
         // 修復漢堡菜單功能
         const menuToggle = document.getElementById('menu-toggle');
         const mainNav = document.getElementById('main-nav');
         const menuOverlay = document.getElementById('menu-overlay');
-        
+
         if (menuToggle && mainNav && menuOverlay) {
             menuToggle.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                
+
                 mainNav.classList.toggle('active');
                 menuOverlay.classList.toggle('active');
-                
+
                 const icon = menuToggle.querySelector('i');
                 if (icon) {
                     if (mainNav.classList.contains('active')) {
@@ -1192,11 +1240,11 @@
                     }
                 }
             });
-            
+
             menuOverlay.addEventListener('click', function() {
                 closeMenu();
             });
-            
+
             const navLinks = mainNav.querySelectorAll('a');
             navLinks.forEach(link => {
                 link.addEventListener('click', function() {
@@ -1206,12 +1254,12 @@
                 });
             });
         }
-        
+
         function closeMenu() {
             if (mainNav && menuOverlay && menuToggle) {
                 mainNav.classList.remove('active');
                 menuOverlay.classList.remove('active');
-                
+
                 const icon = menuToggle.querySelector('i');
                 if (icon) {
                     icon.className = 'fas fa-bars';

@@ -2,6 +2,15 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
+    <!-- firebase-warmup：讓瀏覽器一開始解析頁面就先跟 Firebase 握手、下載 SDK，
+         不用等到下面載入 Firebase 的 module 腳本才開始。版本號要跟 import 的一致。 -->
+    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-lite.js">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js">
     <link rel="icon" type="image/png" sizes="32x32" href="../images/favicon-32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="../images/favicon-16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="../images/apple-touch-icon.png">
@@ -11,15 +20,74 @@
     <meta name="keywords" content="台灣水果,高山水果,新鮮水果,水果禮盒,梨子,水蜜桃,蘋果,杰の御果園,果園直送,有機水果">
     <meta name="author" content="杰の御果園">
 
-    <link rel="stylesheet" href="../css/style.css">
-    <link rel="stylesheet" href="../css/admin-common.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="../css/style.css?v=20261014">
+    <link rel="stylesheet" href="../css/admin-common.css?v=20261014">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer">
 
     <style>
         .bulletin-container {
-            max-width: 800px;
+            max-width: 820px;
             margin: 0 auto;
             padding: 30px 20px;
+        }
+
+        /* ---------- 分頁：首頁輪播圖片 / 布告欄公告 ---------- */
+        .content-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            border-bottom: 2px solid #e0e0e0;
+            margin-bottom: 20px;
+        }
+
+        .content-tab {
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+            padding: 10px 20px;
+            font-size: 1rem;
+            color: #666;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .content-tab:hover {
+            color: #2e7d32;
+        }
+
+        .content-tab.active {
+            color: #2e7d32;
+            font-weight: 600;
+            border-bottom-color: #4caf50;
+        }
+
+        .content-panel[hidden] {
+            display: none;
+        }
+
+        .bulletin-intro {
+            color: #666;
+            margin: 0 0 10px;
+            line-height: 1.7;
+        }
+
+        .bulletin-tip {
+            color: #2e7d32;
+            background-color: #f1f8f1;
+            border-radius: 6px;
+            padding: 10px 14px;
+            margin: 0 0 20px;
+            font-size: 0.95em;
+        }
+
+        .bulletin-load-status {
+            background: #fff8e1;
+            border: 1px solid #ffe082;
+            color: #6d5200;
+            border-radius: 6px;
+            padding: 10px 14px;
+            margin: 0 0 16px;
         }
 
         .bulletin-container .settings-card {
@@ -27,15 +95,17 @@
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
             overflow: hidden;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
         }
 
         .bulletin-container .card-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
+            flex-wrap: wrap;
             gap: 10px;
-            padding: 20px 24px;
+            padding: 16px 24px;
+            background-color: #f9f9f9;
             border-bottom: 1px solid #eee;
         }
 
@@ -45,18 +115,24 @@
             gap: 10px;
         }
 
-        .bulletin-container .card-header i.fa-bullhorn {
+        .bulletin-container .card-header-title i {
             color: #4caf50;
-            font-size: 20px;
+            font-size: 1.2em;
         }
 
         .bulletin-container .card-header h2 {
             margin: 0;
-            font-size: 18px;
+            font-size: 1.1em;
+            color: #333;
         }
 
         .bulletin-container .card-body {
+            display: none;
             padding: 24px;
+        }
+
+        .bulletin-container .card-body.enabled {
+            display: block;
         }
 
         .bulletin-container .form-group {
@@ -83,40 +159,51 @@
             font-size: 15px;
             font-family: inherit;
             resize: vertical;
+            box-sizing: border-box;
         }
 
-        .bulletin-container .bulletin-image-preview {
-            margin-top: 12px;
-            max-width: 320px;
-            border: 1px solid #eee;
-            border-radius: 6px;
-            overflow: hidden;
-            display: none;
+        .bulletin-container textarea.bulletin-text-input:focus {
+            border-color: #4caf50;
+            outline: none;
         }
 
-        .bulletin-container .bulletin-image-preview img {
-            width: 100%;
-            display: block;
-        }
-
-        .bulletin-container .bulletin-image-actions {
-            margin-top: 10px;
-            display: flex;
-            gap: 10px;
-        }
-
-        .bulletin-container .bulletin-hint {
+        .bulletin-hint {
             font-size: 13px;
             color: #888;
             margin-top: 6px;
         }
 
-        .bulletin-container .remove-bulletin-image-btn {
-            padding: 6px 14px;
-            font-size: 13px;
+        .image-preview-wrap {
+            margin-top: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            gap: 16px;
         }
 
-        /* 啟用第二則公告的開關 */
+        .image-preview-wrap[hidden] {
+            display: none;
+        }
+
+        .image-preview {
+            width: 360px;
+            max-width: 100%;
+            border-radius: 6px;
+            border: 1px solid #eee;
+            display: block;
+        }
+
+        /* 輪播圖預覽用跟首頁一樣的 12:5 比例，看得出實際會被裁切的樣子 */
+        .image-preview.carousel-preview {
+            aspect-ratio: 12 / 5;
+            object-fit: cover;
+        }
+
+        /* 公告圖片在首頁不裁切，預覽也照原比例 */
+        .image-preview.notice-preview {
+            height: auto;
+        }
+
         .bulletin-toggle {
             display: flex;
             align-items: center;
@@ -124,57 +211,64 @@
             font-size: 14px;
             color: #555;
             cursor: pointer;
+            user-select: none;
         }
 
         .bulletin-toggle input {
             width: 16px;
             height: 16px;
+            margin: 0;
         }
 
-        #slot-1-body,
-        #slot-2-body {
-            display: none;
+        .form-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            padding-top: 4px;
         }
 
-        #slot-1-body.enabled,
-        #slot-2-body.enabled {
-            display: block;
+        .form-actions a {
+            color: #2e7d32;
         }
     </style>
 
     <!-- 引入 Firebase SDK -->
-    <script src="../js/firebase-config.js"></script>
+    <script src="../js/firebase-config.js?v=20261014"></script>
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import {
             getAuth,
             onAuthStateChanged
-        } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import {
             initializeFirestore,
+            terminate,
             doc,
             getDoc,
             setDoc,
             serverTimestamp
-        } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-lite.js";
         import {
             getStorage,
             ref,
             uploadBytes
-        } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js";
+        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
         const firebaseConfig = window.FIREBASE_CONFIG;
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        // 自動偵測目前網路環境是否會擋掉預設的串流連線，會的話自動改用相容性更好的
-        // 長輪詢，降低連線逾時、被誤判成「查無資料」的機率
-        const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
+        // 連線設定統一放在 js/firebase-config.js 的 FIRESTORE_SETTINGS（原因寫在那裡）
+        const db = initializeFirestore(app, window.FIRESTORE_SETTINGS);
         const storage = getStorage(app);
 
         window.firebaseServices = {
             auth: auth,
             db: db,
+            app: app,
+            initializeFirestore,
+            terminate,
             storage: storage,
             getAuth,
             onAuthStateChanged,
@@ -236,81 +330,45 @@
         <div class="bulletin-container">
             <h1 class="admin-title">布告欄管理</h1>
 
-            <form id="bulletin-form">
-                <!-- 公告一 -->
-                <div class="settings-card">
-                    <div class="card-header">
-                        <div class="card-header-title">
-                            <i class="fas fa-bullhorn"></i>
-                            <h2>公告一</h2>
-                        </div>
-                        <label class="bulletin-toggle">
-                            <input type="checkbox" id="enable-slot-1" checked>
-                            啟用第一則公告
-                        </label>
-                    </div>
+            <p class="bulletin-load-status" id="bulletin-load-status" role="status">正在載入目前的設定…</p>
 
-                    <div class="card-body enabled" id="slot-1-body">
-                        <div class="form-group">
-                            <label for="bulletin-text-1">公告文字</label>
-                            <textarea class="bulletin-text-input" id="bulletin-text-1" placeholder="例如：中秋節出貨公告、休園通知等..."></textarea>
-                            <p class="bulletin-hint">文字跟圖片都是選填，但至少要填一項</p>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="bulletin-image-1">公告圖片（選填，最多一張，會等比例縮放、不裁切）</label>
-                            <input type="file" class="bulletin-image-input" id="bulletin-image-1" accept="image/*">
-                            <div class="bulletin-image-preview" id="bulletin-image-preview-1">
-                                <img class="bulletin-preview-img" id="bulletin-preview-img-1" src="" alt="公告圖片預覽">
-                            </div>
-                            <div class="bulletin-image-actions">
-                                <button type="button" class="btn btn-outline remove-bulletin-image-btn" id="remove-bulletin-image-1" style="display: none;">
-                                    <i class="fas fa-times"></i> 移除圖片
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 公告二 -->
-                <div class="settings-card">
-                    <div class="card-header">
-                        <div class="card-header-title">
-                            <i class="fas fa-bullhorn"></i>
-                            <h2>公告二</h2>
-                        </div>
-                        <label class="bulletin-toggle">
-                            <input type="checkbox" id="enable-slot-2">
-                            啟用第二則公告
-                        </label>
-                    </div>
-
-                    <div class="card-body" id="slot-2-body">
-                        <div class="form-group">
-                            <label for="bulletin-text-2">公告文字</label>
-                            <textarea class="bulletin-text-input" id="bulletin-text-2" placeholder="例如：中秋節出貨公告、休園通知等..."></textarea>
-                            <p class="bulletin-hint">文字跟圖片都是選填，但至少要填一項</p>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="bulletin-image-2">公告圖片（選填，最多一張，會等比例縮放、不裁切）</label>
-                            <input type="file" class="bulletin-image-input" id="bulletin-image-2" accept="image/*">
-                            <div class="bulletin-image-preview" id="bulletin-image-preview-2">
-                                <img class="bulletin-preview-img" id="bulletin-preview-img-2" src="" alt="公告圖片預覽">
-                            </div>
-                            <div class="bulletin-image-actions">
-                                <button type="button" class="btn btn-outline remove-bulletin-image-btn" id="remove-bulletin-image-2" style="display: none;">
-                                    <i class="fas fa-times"></i> 移除圖片
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <button type="submit" class="btn btn-primary" id="save-bulletin-btn">
-                    <i class="fas fa-save"></i> 儲存公告
+            <div class="content-tabs" role="tablist">
+                <button type="button" class="content-tab active" role="tab" id="tab-carousel" data-panel="carousel-panel" aria-selected="true" aria-controls="carousel-panel">
+                    <i class="fas fa-images"></i> 首頁輪播圖片
                 </button>
-            </form>
+                <button type="button" class="content-tab" role="tab" id="tab-notices" data-panel="notices-panel" aria-selected="false" aria-controls="notices-panel">
+                    <i class="fas fa-bullhorn"></i> 布告欄公告
+                </button>
+            </div>
+
+            <!-- 首頁輪播圖片：最多 3 張 -->
+            <section class="content-panel" id="carousel-panel" role="tabpanel" aria-labelledby="tab-carousel">
+                <p class="bulletin-intro">首頁最上方的輪播圖片，最多 3 張，會依照下面的順序自動輪播，顧客也可以左右滑動切換。全部關閉的話，首頁會改顯示原本的文字版主視覺。</p>
+                <p class="bulletin-tip"><i class="fas fa-info-circle"></i> 建議尺寸 1920 × 800 像素（寬：高 = 12：5）。手機畫面會裁掉圖片左右兩側一些，重要的文字請放在圖片中間。上傳時會自動壓縮。</p>
+
+                <div id="carousel-slots"></div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-primary" id="save-carousel-btn" disabled>
+                        <i class="fas fa-save"></i> 儲存輪播圖片
+                    </button>
+                    <a href="../index.html" target="_blank" rel="noopener"><i class="fas fa-external-link-alt"></i> 查看首頁</a>
+                </div>
+            </section>
+
+            <!-- 布告欄公告：最多 2 則，文字＋選填圖片 -->
+            <section class="content-panel" id="notices-panel" role="tabpanel" aria-labelledby="tab-notices" hidden>
+                <p class="bulletin-intro">首頁「最新公告」區塊，最多 2 則（例如出貨公告、休園通知）。文字跟圖片都是選填，但每則至少要填一項；全部關閉的話首頁不會顯示公告區塊。</p>
+
+                <div id="notice-slots"></div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-primary" id="save-notices-btn" disabled>
+                        <i class="fas fa-save"></i> 儲存公告
+                    </button>
+                    <a href="../index.html" target="_blank" rel="noopener"><i class="fas fa-external-link-alt"></i> 查看首頁</a>
+                </div>
+            </section>
         </div>
     </main>
 
@@ -322,247 +380,340 @@
         </div>
     </footer>
 
-    <script src="../js/member.js"></script>
-    <script src="../js/admin-common.js"></script>
+    <script src="../js/image-upload.js?v=20261014"></script>
+    <script src="../js/admin-common.js?v=20261014"></script>
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // 每個公告欄位的狀態：目前已儲存的圖片網址、使用者是否按了移除圖片
-        const slotState = {
-            1: { currentImageUrl: '', removeImageFlag: false },
-            2: { currentImageUrl: '', removeImageFlag: false }
+        // settings/bulletin 這份文件同時存兩種內容，兩個分頁各自只寫自己的欄位（merge），
+        // 存其中一邊不會把另一邊蓋掉：
+        //   carousel：首頁輪播圖片 [{ imageUrl }]，最多 3 張
+        //   items：布告欄公告 [{ text, imageUrl }]，最多 2 則
+        const CAROUSEL_SLOTS = [1, 2, 3];
+        const NOTICE_SLOTS = [1, 2];
+        const SLOT_LABELS = ['一', '二', '三'];
+
+        // 每個欄位的圖片狀態：目前已儲存的網址、是否按了移除
+        const carouselState = {};
+        const noticeState = {};
+        CAROUSEL_SLOTS.forEach(slot => { carouselState[slot] = { currentImageUrl: '', removeImageFlag: false }; });
+        NOTICE_SLOTS.forEach(slot => { noticeState[slot] = { currentImageUrl: '', removeImageFlag: false }; });
+
+        const statusEl = document.getElementById('bulletin-load-status');
+        const saveCarouselBtn = document.getElementById('save-carousel-btn');
+        const saveNoticesBtn = document.getElementById('save-notices-btn');
+
+        // ---------- 產生欄位 ----------
+        document.getElementById('carousel-slots').innerHTML = CAROUSEL_SLOTS.map(slot => `
+            <div class="settings-card">
+                <div class="card-header">
+                    <div class="card-header-title">
+                        <i class="fas fa-image"></i>
+                        <h2>輪播圖片${SLOT_LABELS[slot - 1]}</h2>
+                    </div>
+                    <label class="bulletin-toggle">
+                        <input type="checkbox" id="carousel-enable-${slot}">
+                        啟用這張圖片
+                    </label>
+                </div>
+                <div class="card-body" id="carousel-body-${slot}">
+                    <div class="form-group">
+                        <label for="carousel-image-${slot}">選擇圖片</label>
+                        <input type="file" id="carousel-image-${slot}" accept="image/*">
+                        <div class="image-preview-wrap" id="carousel-preview-wrap-${slot}" hidden>
+                            <img class="image-preview carousel-preview" id="carousel-preview-${slot}" src="" alt="輪播圖片預覽">
+                            <button type="button" class="btn btn-outline" id="carousel-remove-${slot}">
+                                <i class="fas fa-trash"></i> 移除圖片
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
+        document.getElementById('notice-slots').innerHTML = NOTICE_SLOTS.map(slot => `
+            <div class="settings-card">
+                <div class="card-header">
+                    <div class="card-header-title">
+                        <i class="fas fa-bullhorn"></i>
+                        <h2>公告${SLOT_LABELS[slot - 1]}</h2>
+                    </div>
+                    <label class="bulletin-toggle">
+                        <input type="checkbox" id="notice-enable-${slot}">
+                        啟用這則公告
+                    </label>
+                </div>
+                <div class="card-body" id="notice-body-${slot}">
+                    <div class="form-group">
+                        <label for="notice-text-${slot}">公告文字</label>
+                        <textarea class="bulletin-text-input" id="notice-text-${slot}" maxlength="2000" placeholder="例如：中秋節出貨公告、休園通知等..."></textarea>
+                        <p class="bulletin-hint">文字跟圖片都是選填，但至少要填一項。換行會照樣顯示在首頁。</p>
+                    </div>
+                    <div class="form-group">
+                        <label for="notice-image-${slot}">公告圖片（選填，會等比例縮放、不裁切）</label>
+                        <input type="file" id="notice-image-${slot}" accept="image/*">
+                        <div class="image-preview-wrap" id="notice-preview-wrap-${slot}" hidden>
+                            <img class="image-preview notice-preview" id="notice-preview-${slot}" src="" alt="公告圖片預覽">
+                            <button type="button" class="btn btn-outline" id="notice-remove-${slot}">
+                                <i class="fas fa-trash"></i> 移除圖片
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
+        // ---------- 分頁切換 ----------
+        const switchPanel = function(panelId) {
+            document.querySelectorAll('.content-tab').forEach(tab => {
+                const active = tab.dataset.panel === panelId;
+                tab.classList.toggle('active', active);
+                tab.setAttribute('aria-selected', active ? 'true' : 'false');
+            });
+            document.querySelectorAll('.content-panel').forEach(panel => {
+                panel.hidden = panel.id !== panelId;
+            });
+            history.replaceState(null, '', panelId === 'notices-panel' ? '#notices' : location.pathname);
+        };
+        document.querySelectorAll('.content-tab').forEach(tab => {
+            tab.addEventListener('click', () => switchPanel(tab.dataset.panel));
+        });
+        if (location.hash === '#notices') switchPanel('notices-panel');
+
+        // ---------- 欄位共用操作 ----------
+        const setSlotEnabled = function(prefix, slot, enabled) {
+            document.getElementById(`${prefix}-enable-${slot}`).checked = enabled;
+            document.getElementById(`${prefix}-body-${slot}`).classList.toggle('enabled', enabled);
         };
 
-        const waitForAdminCommon = function() {
-            if (window.AdminCommon) {
-                checkAdminAccess();
-            } else {
-                setTimeout(waitForAdminCommon, 100);
-            }
+        const showPreview = function(prefix, slot, src) {
+            document.getElementById(`${prefix}-preview-${slot}`).src = src;
+            document.getElementById(`${prefix}-preview-wrap-${slot}`).hidden = false;
         };
 
-        const checkAdminAccess = function() {
-            window.AdminCommon.checkAdminAccess(
-                function(user) {
-                    const usernameDisplay = document.getElementById('username-display');
-                    if (usernameDisplay) {
-                        usernameDisplay.textContent = '管理員';
-                    }
-
-                    loadBulletin();
-                    bindEvents();
-                },
-                function(error) {
-                    setTimeout(() => {
-                        window.location.href = '../index.html';
-                    }, 2000);
-                }
-            );
+        const hidePreview = function(prefix, slot) {
+            document.getElementById(`${prefix}-preview-${slot}`).src = '';
+            document.getElementById(`${prefix}-preview-wrap-${slot}`).hidden = true;
         };
 
-        const bindEvents = function() {
-            const form = document.getElementById('bulletin-form');
-            if (form) {
-                form.addEventListener('submit', saveBulletin);
-            }
-
-            [1, 2].forEach(function(slot) {
-                const imageInput = document.getElementById('bulletin-image-' + slot);
-                if (imageInput) {
-                    imageInput.addEventListener('change', function(e) {
-                        const file = e.target.files[0];
-                        if (file) {
-                            slotState[slot].removeImageFlag = false;
-                            const reader = new FileReader();
-                            reader.onload = function(event) {
-                                showImagePreview(slot, event.target.result);
-                            };
-                            reader.readAsDataURL(file);
-                        }
-                    });
-                }
-
-                const removeBtn = document.getElementById('remove-bulletin-image-' + slot);
-                if (removeBtn) {
-                    removeBtn.addEventListener('click', function() {
-                        slotState[slot].removeImageFlag = true;
-                        slotState[slot].currentImageUrl = '';
-                        document.getElementById('bulletin-image-' + slot).value = '';
-                        hideImagePreview(slot);
-                    });
-                }
+        const bindSlot = function(prefix, slot, state) {
+            document.getElementById(`${prefix}-enable-${slot}`).addEventListener('change', function() {
+                setSlotEnabled(prefix, slot, this.checked);
             });
 
-            [1, 2].forEach(function(slot) {
-                const enableCheckbox = document.getElementById('enable-slot-' + slot);
-                const slotBody = document.getElementById('slot-' + slot + '-body');
-                if (enableCheckbox && slotBody) {
-                    enableCheckbox.addEventListener('change', function() {
-                        slotBody.classList.toggle('enabled', enableCheckbox.checked);
-                    });
-                }
+            const input = document.getElementById(`${prefix}-image-${slot}`);
+            input.addEventListener('change', function() {
+                const file = input.files[0];
+                if (!file) return;
+                state.removeImageFlag = false;
+                const reader = new FileReader();
+                reader.onload = e => showPreview(prefix, slot, e.target.result);
+                reader.readAsDataURL(file);
+            });
+
+            document.getElementById(`${prefix}-remove-${slot}`).addEventListener('click', function() {
+                input.value = '';
+                state.removeImageFlag = true;
+                hidePreview(prefix, slot);
             });
         };
 
-        const showImagePreview = function(slot, src) {
-            const preview = document.getElementById('bulletin-image-preview-' + slot);
-            const previewImg = document.getElementById('bulletin-preview-img-' + slot);
-            const removeBtn = document.getElementById('remove-bulletin-image-' + slot);
-            previewImg.src = src;
-            preview.style.display = 'block';
-            removeBtn.style.display = 'inline-flex';
-        };
+        CAROUSEL_SLOTS.forEach(slot => bindSlot('carousel', slot, carouselState[slot]));
+        NOTICE_SLOTS.forEach(slot => bindSlot('notice', slot, noticeState[slot]));
 
-        const hideImagePreview = function(slot) {
-            const preview = document.getElementById('bulletin-image-preview-' + slot);
-            const removeBtn = document.getElementById('remove-bulletin-image-' + slot);
-            preview.style.display = 'none';
-            removeBtn.style.display = 'none';
-        };
-
-        const loadBulletin = async function() {
-            try {
-                const db = window.firebaseServices.db;
-                const doc = window.firebaseServices.doc;
-                const getDoc = window.firebaseServices.getDoc;
-
-                const bulletinRef = doc(db, 'settings', 'bulletin');
-                const bulletinSnap = await getDoc(bulletinRef);
-
-                if (!bulletinSnap.exists()) return;
-
-                const data = bulletinSnap.data();
-
-                // 相容舊格式（單一公告直接存在 text / imageUrl 欄位，沒有 items 陣列）
-                let items = Array.isArray(data.items) ? data.items : [];
-                if (items.length === 0 && (data.text || data.imageUrl)) {
-                    items = [{ text: data.text || '', imageUrl: data.imageUrl || '' }];
-                }
-
-                const enableSlot1 = document.getElementById('enable-slot-1');
-                const slot1Body = document.getElementById('slot-1-body');
-                const enableSlot2 = document.getElementById('enable-slot-2');
-                const slot2Body = document.getElementById('slot-2-body');
-
-                if (items[0]) {
-                    document.getElementById('bulletin-text-1').value = items[0].text || '';
-                    if (items[0].imageUrl) {
-                        slotState[1].currentImageUrl = items[0].imageUrl;
-                        showImagePreview(1, items[0].imageUrl);
-                    }
-                    enableSlot1.checked = true;
-                    slot1Body.classList.add('enabled');
-                } else {
-                    enableSlot1.checked = false;
-                    slot1Body.classList.remove('enabled');
-                }
-
-                if (items[1]) {
-                    document.getElementById('bulletin-text-2').value = items[1].text || '';
-                    if (items[1].imageUrl) {
-                        slotState[2].currentImageUrl = items[1].imageUrl;
-                        showImagePreview(2, items[1].imageUrl);
-                    }
-                    enableSlot2.checked = true;
-                    slot2Body.classList.add('enabled');
-                } else {
-                    enableSlot2.checked = false;
-                    slot2Body.classList.remove('enabled');
-                }
-            } catch (error) {
-                window.AdminCommon.handleError(error, '載入布告欄內容');
-            }
-        };
-
-        // 上傳單一公告的圖片（如果有選新檔案），回傳最終要存的圖片網址
-        const resolveSlotImageUrl = async function(slot) {
-            const state = slotState[slot];
-            const imageFile = document.getElementById('bulletin-image-' + slot).files[0];
-
+        // 這個欄位最後要存的圖片網址：有選新檔案就壓縮後上傳，否則沿用原本的（按了移除就清空）
+        const resolveImageUrl = async function(prefix, slot, state, maxDimension) {
+            const imageFile = document.getElementById(`${prefix}-image-${slot}`).files[0];
             if (!imageFile) {
                 return state.removeImageFlag ? '' : state.currentImageUrl;
             }
 
+            const uploadFile = window.ImageUpload
+                ? await window.ImageUpload.compress(imageFile, { maxDimension, quality: 0.85 })
+                : imageFile;
             const { storage, storageRef, uploadBytes } = window.firebaseServices;
-            const timestamp = Date.now();
-            const imagePath = `bulletin/${timestamp}_${imageFile.name}`;
-            const imageRef = storageRef(storage, imagePath);
-            await uploadBytes(imageRef, imageFile);
+            const imagePath = `bulletin/${Date.now()}_${uploadFile.name}`;
+            await uploadBytes(
+                storageRef(storage, imagePath),
+                uploadFile,
+                window.ImageUpload ? window.ImageUpload.metadataFor(uploadFile) : undefined
+            );
 
-            const bucketName = "jayfruit-9dfab.firebasestorage.app";
-            const encodedPath = encodeURIComponent(imagePath);
-            return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedPath}?alt=media`;
+            const bucketName = window.FIREBASE_CONFIG.storageBucket;
+            return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(imagePath)}?alt=media`;
         };
 
-        const saveBulletin = async function(e) {
-            e.preventDefault();
-
-            const user = window.firebaseServices.auth.currentUser;
-            if (!user) {
-                window.AdminCommon.showToast('您必須登入才能儲存布告欄', 'warning');
+        // ---------- 讀取 ----------
+        // 讀到之前兩個儲存按鈕都是停用的：讀取失敗時表單是空的，這時候按儲存會把
+        // 首頁現有的輪播圖片或公告整個清掉。連線失敗會自動重試
+        const loadBulletin = async function() {
+            let data = {};
+            try {
+                const snap = await window.AdminCommon.loadWithRetry(
+                    () => {
+                        const { db, doc, getDoc } = window.firebaseServices;
+                        return getDoc(doc(db, 'settings', 'bulletin'));
+                    },
+                    (attempt) => {
+                        if (attempt >= 2) statusEl.textContent = '網路連線不穩定，正在重新連線中…（讀到目前的設定之前無法儲存）';
+                    }
+                );
+                data = snap.exists() ? snap.data() : {};
+            } catch (error) {
+                window.AdminCommon.handleError(error, '載入布告欄內容');
+                statusEl.textContent = '無法載入目前的設定，請重新整理頁面。';
                 return;
             }
 
-            const slot1Enabled = document.getElementById('enable-slot-1').checked;
-            let text1 = '';
-            if (slot1Enabled) {
-                text1 = document.getElementById('bulletin-text-1').value.trim();
-                const imageFile1 = document.getElementById('bulletin-image-1').files[0];
-                const hasImage1 = !!(imageFile1 || (!slotState[1].removeImageFlag && slotState[1].currentImageUrl));
+            // 輪播圖片
+            const carousel = (Array.isArray(data.carousel) ? data.carousel : [])
+                .map(item => (item && item.imageUrl) || '')
+                .filter(Boolean)
+                .slice(0, CAROUSEL_SLOTS.length);
+            CAROUSEL_SLOTS.forEach(slot => setSlotEnabled('carousel', slot, false));
+            carousel.forEach((url, index) => {
+                const slot = index + 1;
+                carouselState[slot].currentImageUrl = url;
+                setSlotEnabled('carousel', slot, true);
+                showPreview('carousel', slot, url);
+            });
+            // 從沒設定過時預設開第一張，方便直接上傳
+            if (carousel.length === 0) setSlotEnabled('carousel', 1, true);
 
-                if (!text1 && !hasImage1) {
-                    window.AdminCommon.showToast('公告一已啟用，請至少填寫文字或選擇一張圖片', 'warning');
-                    return;
-                }
+            // 布告欄公告（相容最早的舊格式：單一公告直接存在 text / imageUrl 欄位）
+            let items = Array.isArray(data.items) ? data.items : [];
+            if (items.length === 0 && (data.text || data.imageUrl)) {
+                items = [{ text: data.text || '', imageUrl: data.imageUrl || '' }];
             }
-
-            const slot2Enabled = document.getElementById('enable-slot-2').checked;
-            let text2 = '';
-            if (slot2Enabled) {
-                text2 = document.getElementById('bulletin-text-2').value.trim();
-                const imageFile2 = document.getElementById('bulletin-image-2').files[0];
-                const hasImage2 = !!(imageFile2 || (!slotState[2].removeImageFlag && slotState[2].currentImageUrl));
-
-                if (!text2 && !hasImage2) {
-                    window.AdminCommon.showToast('公告二已啟用，請至少填寫文字或選擇一張圖片', 'warning');
-                    return;
+            items = items.filter(item => item && (item.text || item.imageUrl)).slice(0, NOTICE_SLOTS.length);
+            NOTICE_SLOTS.forEach(slot => setSlotEnabled('notice', slot, false));
+            items.forEach((item, index) => {
+                const slot = index + 1;
+                document.getElementById(`notice-text-${slot}`).value = item.text || '';
+                if (item.imageUrl) {
+                    noticeState[slot].currentImageUrl = item.imageUrl;
+                    showPreview('notice', slot, item.imageUrl);
                 }
-            }
+                setSlotEnabled('notice', slot, true);
+            });
+            if (items.length === 0) setSlotEnabled('notice', 1, true);
 
-            window.AdminCommon.showLoading('儲存公告中...');
-
-            try {
-                const { doc, setDoc, serverTimestamp, db } = window.firebaseServices;
-                const items = [];
-
-                if (slot1Enabled) {
-                    const imageUrl1 = await resolveSlotImageUrl(1);
-                    items.push({ text: text1, imageUrl: imageUrl1 });
-                    slotState[1].currentImageUrl = imageUrl1;
-                    slotState[1].removeImageFlag = false;
-                }
-
-                if (slot2Enabled) {
-                    const imageUrl2 = await resolveSlotImageUrl(2);
-                    items.push({ text: text2, imageUrl: imageUrl2 });
-                    slotState[2].currentImageUrl = imageUrl2;
-                    slotState[2].removeImageFlag = false;
-                }
-
-                await setDoc(doc(db, 'settings', 'bulletin'), {
-                    items,
-                    updatedAt: serverTimestamp()
-                });
-
-                window.AdminCommon.showToast(items.length > 0 ? '公告已儲存' : '布告欄已關閉，首頁不會顯示公告區塊', 'success');
-
-            } catch (error) {
-                window.AdminCommon.handleError(error, '儲存布告欄');
-            } finally {
-                window.AdminCommon.hideLoading();
-            }
+            statusEl.hidden = true;
+            saveCarouselBtn.disabled = false;
+            saveNoticesBtn.disabled = false;
         };
 
+        // ---------- 儲存輪播圖片 ----------
+        saveCarouselBtn.addEventListener('click', async function() {
+            const enabledSlots = CAROUSEL_SLOTS.filter(slot => document.getElementById(`carousel-enable-${slot}`).checked);
+            for (const slot of enabledSlots) {
+                const hasFile = !!document.getElementById(`carousel-image-${slot}`).files[0];
+                const state = carouselState[slot];
+                if (!hasFile && (state.removeImageFlag || !state.currentImageUrl)) {
+                    window.AdminCommon.showToast(`輪播圖片${SLOT_LABELS[slot - 1]}已啟用，請選擇一張圖片或取消啟用`, 'warning');
+                    return;
+                }
+            }
+
+            saveCarouselBtn.disabled = true;
+            window.AdminCommon.showLoading('儲存輪播圖片中...');
+            try {
+                const carousel = [];
+                for (const slot of enabledSlots) {
+                    const imageUrl = await resolveImageUrl('carousel', slot, carouselState[slot], 1920);
+                    if (imageUrl) carousel.push({ imageUrl });
+                }
+
+                const { db, doc, setDoc, serverTimestamp } = window.firebaseServices;
+                await setDoc(doc(db, 'settings', 'bulletin'), {
+                    carousel,
+                    updatedAt: serverTimestamp()
+                }, { merge: true });
+
+                // 存好之後把畫面狀態同步成剛存的內容
+                CAROUSEL_SLOTS.forEach(slot => {
+                    carouselState[slot] = { currentImageUrl: '', removeImageFlag: false };
+                    document.getElementById(`carousel-image-${slot}`).value = '';
+                    hidePreview('carousel', slot);
+                    setSlotEnabled('carousel', slot, false);
+                });
+                carousel.forEach((item, index) => {
+                    const slot = index + 1;
+                    carouselState[slot].currentImageUrl = item.imageUrl;
+                    showPreview('carousel', slot, item.imageUrl);
+                    setSlotEnabled('carousel', slot, true);
+                });
+
+                window.AdminCommon.showToast(carousel.length > 0 ? '輪播圖片已儲存' : '已關閉輪播，首頁會顯示文字版主視覺', 'success');
+            } catch (error) {
+                window.AdminCommon.handleError(error, '儲存輪播圖片');
+            } finally {
+                window.AdminCommon.hideLoading();
+                saveCarouselBtn.disabled = false;
+            }
+        });
+
+        // ---------- 儲存布告欄公告 ----------
+        saveNoticesBtn.addEventListener('click', async function() {
+            const enabledSlots = NOTICE_SLOTS.filter(slot => document.getElementById(`notice-enable-${slot}`).checked);
+            for (const slot of enabledSlots) {
+                const text = document.getElementById(`notice-text-${slot}`).value.trim();
+                const hasFile = !!document.getElementById(`notice-image-${slot}`).files[0];
+                const state = noticeState[slot];
+                const hasImage = hasFile || (!state.removeImageFlag && !!state.currentImageUrl);
+                if (!text && !hasImage) {
+                    window.AdminCommon.showToast(`公告${SLOT_LABELS[slot - 1]}已啟用，請至少填寫文字或選擇一張圖片`, 'warning');
+                    return;
+                }
+            }
+
+            saveNoticesBtn.disabled = true;
+            window.AdminCommon.showLoading('儲存公告中...');
+            try {
+                const items = [];
+                for (const slot of enabledSlots) {
+                    const text = document.getElementById(`notice-text-${slot}`).value.trim();
+                    const imageUrl = await resolveImageUrl('notice', slot, noticeState[slot], 1600);
+                    items.push({ text, imageUrl });
+                    noticeState[slot] = { currentImageUrl: imageUrl, removeImageFlag: false };
+                    document.getElementById(`notice-image-${slot}`).value = '';
+                }
+
+                const { db, doc, setDoc, serverTimestamp, deleteField } = window.firebaseServices;
+                const data = { items, updatedAt: serverTimestamp() };
+                // 清掉最早期的單一公告欄位，否則公告全部關閉時首頁會改顯示那份舊公告
+                if (deleteField) {
+                    data.text = deleteField();
+                    data.imageUrl = deleteField();
+                }
+                await setDoc(doc(db, 'settings', 'bulletin'), data, { merge: true });
+
+                window.AdminCommon.showToast(items.length > 0 ? '公告已儲存' : '布告欄已關閉，首頁不會顯示公告區塊', 'success');
+            } catch (error) {
+                window.AdminCommon.handleError(error, '儲存公告');
+            } finally {
+                window.AdminCommon.hideLoading();
+                saveNoticesBtn.disabled = false;
+            }
+        });
+
+        // ---------- 權限檢查後才讀取 ----------
+        const waitForAdminCommon = function() {
+            if (window.AdminCommon && window.firebaseServices && window.firebaseServices.deleteField) {
+                window.AdminCommon.checkAdminAccess(
+                    function() {
+                        const usernameDisplay = document.getElementById('username-display');
+                        if (usernameDisplay) usernameDisplay.textContent = '管理員';
+                        loadBulletin();
+                    },
+                    function() {
+                        setTimeout(() => { window.location.href = '../index.html'; }, 2000);
+                    }
+                );
+            } else {
+                setTimeout(waitForAdminCommon, 100);
+            }
+        };
         waitForAdminCommon();
     });
     </script>

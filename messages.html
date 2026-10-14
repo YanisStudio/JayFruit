@@ -2,6 +2,14 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
+    <!-- firebase-warmup：讓瀏覽器一開始解析頁面就先跟 Firebase 握手、下載 SDK，
+         不用等到下面載入 Firebase 的 module 腳本才開始。版本號要跟 import 的一致。 -->
+    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-lite.js">
     <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="images/favicon-16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="images/apple-touch-icon.png">
@@ -19,11 +27,11 @@
     <meta property="og:url" content="https://jayfarmer.tw/messages.html">
     <meta property="og:type" content="website">
 
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/common.css">
-    <link rel="stylesheet" href="css/cart.css">
-    <link rel="stylesheet" href="css/auth-modals.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css?v=20261014">
+    <link rel="stylesheet" href="css/common.css?v=20261014">
+    <link rel="stylesheet" href="css/cart.css?v=20261014">
+    <link rel="stylesheet" href="css/auth-modals.css?v=20261014">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer">
 
     <style>
 /* 我的訊息頁面特有樣式 */
@@ -244,7 +252,7 @@
     </style>
 
     <!-- Firebase SDK引入 - 使用統一版本 10.7.1 -->
-    <script src="js/firebase-config.js"></script>
+    <script src="js/firebase-config.js?v=20261014"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import {
@@ -272,31 +280,34 @@
         } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import {
             initializeFirestore,
+            terminate,
             collection,
             doc,
             setDoc,
             getDoc,
             getDocs,
-            getDocsFromServer,
+            getDocs as getDocsFromServer,
             updateDoc,
             query,
             orderBy,
             where,
             serverTimestamp
-        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-lite.js";
 
         // Firebase配置 - 統一使用與其他頁面相同的配置
         const firebaseConfig = window.FIREBASE_CONFIG;
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        // 自動偵測目前網路環境是否會擋掉預設的串流連線，會的話自動改用相容性更好的
-        // 長輪詢，降低連線逾時、被誤判成「查無資料」的機率
-        const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
+        // 連線設定統一放在 js/firebase-config.js 的 FIRESTORE_SETTINGS（原因寫在那裡）
+        const db = initializeFirestore(app, window.FIRESTORE_SETTINGS);
 
         window.firebaseServices = {
             auth: auth,
             db: db,
+            app: app,
+            initializeFirestore,
+            terminate,
             getAuth,
             createUserWithEmailAndPassword,
             signInWithEmailAndPassword,
@@ -328,6 +339,7 @@
             signInWithCustomToken
         };
     </script>
+    <link rel="stylesheet" href="css/storefront.css?v=20261014">
 </head>
 <body>
     <header>
@@ -480,27 +492,45 @@
         </section>
     </main>
 
-    <footer>
+    <footer class="site-footer">
         <div class="container">
             <div class="footer-content">
                 <div class="footer-section">
-                    <h3>粉絲專頁</h3>
-                    <p>為您提供最優質的水果選擇</p>
+                    <h3>杰の御果園</h3>
+                    <p>梨山高山果園直營，新鮮直送到府</p>
                     <div class="social-links">
-                        <a href="https://www.facebook.com/jay0955688658" target="_blank" title="Facebook 粉絲頁"><i class="fab fa-facebook"></i></a>
-                        <a href="https://line.me/R/ti/p/@farmer-jay" target="_blank" title="LINE官方帳號"><i class="fab fa-line"></i></a>
+                        <a href="https://www.facebook.com/jay0955688658" target="_blank" rel="noopener" title="Facebook 粉絲專頁" aria-label="Facebook 粉絲專頁"><i class="fab fa-facebook"></i></a>
+                        <a href="https://line.me/R/ti/p/@farmer-jay" target="_blank" rel="noopener" title="LINE 官方帳號" aria-label="LINE 官方帳號"><i class="fab fa-line"></i></a>
                     </div>
                 </div>
 
                 <div class="footer-section">
-                    <h3>聯絡資訊</h3>
-                    <p><a href="https://line.me/R/ti/p/@farmer-jay" target="_blank" style="color: #06c755; text-decoration: none;"><i class="fab fa-line"></i> LINE 官方帳號：@farmer-jay</a></p>
-                    <p><i class="fas fa-map-marker-alt"></i> 果園地址：台中市和平區環山</p>
+                    <h3>水果分類</h3>
+                    <ul class="footer-links">
+                        <li><a href="products.html?category=peach">水蜜桃</a></li>
+                        <li><a href="products.html?category=persimmon">甜柿</a></li>
+                        <li><a href="products.html?category=pear">梨子</a></li>
+                        <li><a href="products.html?category=apple">蘋果</a></li>
+                        <li><a href="products.html?category=gift">禮盒</a></li>
+                        <li><a href="products.html">所有商品 &raquo;</a></li>
+                    </ul>
                 </div>
 
                 <div class="footer-section">
-                    <h3>客服時間</h3>
-                    <p><i class="far fa-clock"></i> 週一至週五：9:00 - 18:00</p>
+                    <h3>顧客服務</h3>
+                    <ul class="footer-links">
+                        <li><a href="about.html">關於果園</a></li>
+                        <li><a href="contact.html">聯絡我們</a></li>
+                        <li><a href="orders.html">訂單查詢</a></li>
+                        <li><a href="cart.html">購物車</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h3>聯絡資訊</h3>
+                    <p><a href="https://line.me/R/ti/p/@farmer-jay" target="_blank" rel="noopener" style="color: #06c755;"><i class="fab fa-line"></i> LINE 官方帳號：@farmer-jay</a></p>
+                    <p><i class="fas fa-map-marker-alt"></i> 果園地址：台中市和平區環山</p>
+                    <p><i class="far fa-clock"></i> 客服時間：週一至週五 9:00 - 18:00</p>
                 </div>
             </div>
 
@@ -511,9 +541,9 @@
     </footer>
 
     <!-- 引入彈窗管理器 -->
-    <script src="js/auth-modals.js"></script>
-    <script src="js/common.js"></script>
-    <script src="js/member.js"></script>
+    <script src="js/auth-modals.js?v=20261014"></script>
+    <script src="js/common.js?v=20261014"></script>
+    <script src="js/member.js?v=20261014"></script>
 
     <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -596,7 +626,8 @@ async function loadUserMessages(user) {
         // 避免需要額外設定複合索引；改在瀏覽器端排序
         const messagesCollectionRef = collection(db, 'messages');
         const q = query(messagesCollectionRef, where('userId', '==', user.uid));
-        const querySnapshot = await getDocsFromServer(q);
+        const querySnapshot = await window.withReadTimeout(getDocsFromServer(q));
+        if (window.noteFirestoreSuccess) window.noteFirestoreSuccess();
 
         if (querySnapshot.empty) {
             messageList.innerHTML = '<div class="no-messages"><p>目前沒有訊息紀錄</p></div>';
@@ -635,12 +666,12 @@ async function loadUserMessages(user) {
                         ${hasReply ? '已回覆' : '待回覆'}
                     </span>
                     <div class="message-card-content">
-                        <p>${window.escapeHtml(messageData.message)}</p>
+                        <p>${window.escapeHtml(messageData.message).replace(/\n/g, '<br>')}</p>
                     </div>
                     ${hasReply ? `
                         <div class="message-card-reply">
                             <h4><i class="fas fa-reply"></i> 商家回覆${repliedDate ? `（${repliedDate}）` : ''}</h4>
-                            <p>${window.escapeHtml(messageData.reply)}</p>
+                            <p>${window.escapeHtml(messageData.reply).replace(/\n/g, '<br>')}</p>
                         </div>
                     ` : ''}
                 </div>
@@ -650,7 +681,13 @@ async function loadUserMessages(user) {
         messageList.innerHTML = html;
     } catch (error) {
         console.error('載入訊息時出錯:', error);
-        messageList.innerHTML = '<div class="no-messages"><p>載入訊息時發生錯誤，請稍後再試</p></div>';
+        messageList.innerHTML = `
+            <div class="no-messages">
+                <p>網路連線不穩定，暫時無法讀取您的訊息（訊息並沒有遺失）。</p>
+                <button type="button" class="btn btn-primary" id="retry-load-messages" style="margin-top: 0.8em;">重新載入</button>
+            </div>`;
+        const retryBtn = document.getElementById('retry-load-messages');
+        if (retryBtn) retryBtn.addEventListener('click', () => loadUserMessages(user));
     }
 }
     </script>

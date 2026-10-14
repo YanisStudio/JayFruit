@@ -3,16 +3,8 @@
  * 包含：Firebase 初始化、管理員驗證、導航功能、UI 交互等
  */
 
-// Firebase 配置
-const firebaseConfig = {
-            apiKey: "AIzaSyADQzSglrzQm1G-fO4kc9dcmJsA9f6S2AQ",
-            authDomain: "jayfruit-9dfab.firebaseapp.com",
-            projectId: "jayfruit-9dfab",
-            storageBucket: "jayfruit-9dfab.firebasestorage.app",
-            messagingSenderId: "766936951714",
-            appId: "1:766936951714:web:4dc4a8787e810a0171a0fb",
-            measurementId: "G-2NWQ7E9Y8H"
-        };
+// Firebase 配置（共用設定見 js/firebase-config.js，須在本檔案之前載入）
+const firebaseConfig = window.FIREBASE_CONFIG;
 
 // 全局變量
 let firebaseApp = null;
@@ -42,19 +34,21 @@ async function isAdmin(user) {
 async function initializeFirebase() {
     try {
         // 動態導入 Firebase 模組
-        const { initializeApp, getApps, getApp } = await import("https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js");
+        const { initializeApp, getApps, getApp } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js");
         const { 
             getAuth, 
             onAuthStateChanged,
             signOut
-        } = await import("https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js");
+        } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
         const {
             getFirestore,
+            initializeFirestore,
+            terminate,
             collection,
             addDoc,
             getDoc,
             getDocs,
-            getDocsFromServer,
+            getDocs: getDocsFromServer, // Lite 的 getDocs 一律向伺服器讀取，語意同 getDocsFromServer
             doc,
             updateDoc,
             deleteDoc,
@@ -65,14 +59,15 @@ async function initializeFirebase() {
             limit,
             serverTimestamp,
             writeBatch,
-            deleteField
-        } = await import("https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js");
+            deleteField,
+            increment
+        } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-lite.js");
         const {
             getStorage,
             ref,
             uploadBytes,
             getDownloadURL
-        } = await import("https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js");
+        } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js");
         
         // 初始化 Firebase
         // 每個後台頁面的 <head> 都已經各自呼叫過一次 initializeApp（先載入該頁面
@@ -85,8 +80,11 @@ async function initializeFirebase() {
         const db = getFirestore(firebaseApp);
         const storage = getStorage(firebaseApp);
         
-        // 將 Firebase 服務暴露給全局使用
+        // 將 Firebase 服務暴露給全局使用。
+        // 用 ...window.firebaseServices 保留頁面內嵌 script 可能自己額外加的方法，
+        // 避免這裡整個覆蓋掉
         window.firebaseServices = {
+            ...window.firebaseServices,
             app: firebaseApp,
             auth: auth,
             db: db,
@@ -95,6 +93,10 @@ async function initializeFirebase() {
             getAuth,
             onAuthStateChanged,
             signOut,
+            // 重建 Firestore 連線時要用（見 resetFirestoreConnection）
+            getFirestore,
+            initializeFirestore,
+            terminate,
             // Firestore 方法
             collection,
             addDoc,
@@ -112,6 +114,7 @@ async function initializeFirebase() {
             serverTimestamp,
             writeBatch,
             deleteField,
+            increment,
             // Storage 方法
             storageRef: ref,
             uploadBytes,
@@ -123,6 +126,109 @@ async function initializeFirebase() {
     } catch (error) {
         console.error('Firebase 初始化失敗:', error);
         return false;
+    }
+}
+
+/**
+ * 重建 Firestore 連線：把舊的連線物件關掉，換一個全新的。
+ * 只替換 window.firebaseServices.db 這個「屬性」，不是整個換掉 firebaseServices
+ * 物件，這樣所有「每次要用才即時讀取 window.firebaseServices.db」的地方，
+ * 下一次呼叫就會自動用到新連線。
+ * 一定要用 initializeFirestore 並帶回 js/firebase-config.js 的 FIRESTORE_SETTINGS，
+ * 跟頁面初始化時同一份設定，不能用 getFirestore()（那會悄悄換成預設設定）。
+ */
+async function resetFirestoreConnection() {
+    const services = window.firebaseServices;
+    if (!services || !services.app || !services.initializeFirestore || !services.terminate) {
+        console.warn('無法重建 Firestore 連線：缺少 app/initializeFirestore/terminate');
+        return false;
+    }
+    try {
+        await services.terminate(services.db);
+        services.db = services.initializeFirestore(services.app, window.FIRESTORE_SETTINGS);
+        console.log('Firestore 連線已重建');
+        return true;
+    } catch (error) {
+        console.error('重建 Firestore 連線失敗:', error);
+        return false;
+    }
+}
+
+// ---- 什麼時候才該重建連線（跟 js/common.js 同一套政策）----
+// 1. 這一頁從來沒有成功讀到過資料：一失敗就重建，之後每次失敗間隔夠久就再重建
+// 2. 這一頁已經成功讀過資料，之後才失敗：先讓 SDK 自己恢復，持續失敗 30 秒才重建
+// 全站已改用 Firestore Lite，沒有長連線會卡住，這套政策保留當安全網
+const NEVER_CONNECTED_RESET_GAP_MS = 9000;
+const RESET_AFTER_MS = 30000;
+const RESET_COOLDOWN_MS = 60000;
+let everSucceeded = false;
+let firstFailureAt = 0;
+let lastResetAt = 0;
+
+// 讀取成功時呼叫：標記「這一頁連上過」，並把「連續失敗」的計時歸零
+function noteFirestoreSuccess() {
+    everSucceeded = true;
+    firstFailureAt = 0;
+}
+
+/**
+ * 讀取失敗時呼叫，依上面兩種情況決定要不要真的重建連線
+ * @returns {Promise<boolean>} 這次有沒有真的重建
+ */
+async function maybeResetFirestoreConnection() {
+    const now = Date.now();
+    if (!everSucceeded) {
+        if (now - lastResetAt < NEVER_CONNECTED_RESET_GAP_MS) return false;
+        lastResetAt = now;
+        return resetFirestoreConnection();
+    }
+    if (!firstFailureAt) {
+        firstFailureAt = now;
+        return false;
+    }
+    if (now - firstFailureAt < RESET_AFTER_MS) return false;
+    if (now - lastResetAt < RESET_COOLDOWN_MS) return false;
+    lastResetAt = now;
+    return resetFirestoreConnection();
+}
+
+/**
+ * 讀取資料並在失敗時自動重試（間隔漸增、封頂 8 秒），給後台各頁面的列表與儀表板用。
+ * Lite 的讀取是一般的 fetch，萬一請求一直沒有回應，頁面會永遠停在載入中，
+ * 所以每次嘗試另外加 20 秒逾時。onRetry(attempt, error) 讓頁面顯示「連線中…」，
+ * 絕對不要在失敗時顯示 0 或空列表——管理員會以為資料遺失。
+ * @param {Function} loader - 回傳 Promise 的讀取函式
+ * @param {Function} onRetry - 每次失敗、準備重試時呼叫（選填）
+ */
+async function loadWithRetry(loader, onRetry) {
+    const READ_TIMEOUT_MS = 20000;
+    let attempt = 1;
+    for (;;) {
+        let timeoutId;
+        try {
+            const result = await Promise.race([
+                Promise.resolve().then(loader),
+                new Promise((resolve, reject) => {
+                    timeoutId = setTimeout(() => {
+                        const error = new Error('讀取逾時（' + READ_TIMEOUT_MS / 1000 + ' 秒沒有回應）');
+                        error.code = 'deadline-exceeded';
+                        reject(error);
+                    }, READ_TIMEOUT_MS);
+                })
+            ]);
+            noteFirestoreSuccess();
+            return result;
+        } catch (error) {
+            // 權限不足重試也沒用，直接交給呼叫端
+            if (error && error.code === 'permission-denied') throw error;
+            console.warn(`讀取失敗（第 ${attempt} 次），將自動重試:`, error);
+            if (onRetry) onRetry(attempt, error);
+            await maybeResetFirestoreConnection();
+            await new Promise(resolve => setTimeout(resolve, Math.min(attempt * 1000, 8000)));
+            attempt++;
+        } finally {
+            clearTimeout(timeoutId);
+        }
     }
 }
 
@@ -332,12 +438,20 @@ function showLoading(message = '') {
         loadingOverlay.innerHTML = `
             <div class="loading-content">
                 <div class="spinner"></div>
-                ${message ? `<p class="loading-message">${message}</p>` : ''}
+                <p class="loading-message"></p>
             </div>
         `;
         document.body.appendChild(loadingOverlay);
     }
-    
+
+    // 每次都更新訊息：覆蓋層只會建立一次，原本只有第一次呼叫的訊息會顯示，
+    // 之後換成「儲存中…」之類的其他訊息時畫面還停在第一次的文字
+    const messageEl = loadingOverlay.querySelector('.loading-message');
+    if (messageEl) {
+        messageEl.textContent = message;
+        messageEl.style.display = message ? '' : 'none';
+    }
+
     loadingOverlay.classList.add('active');
 }
 
@@ -406,8 +520,8 @@ function showConfirmDialog(message, title = '確認操作') {
             confirmDialog.className = 'confirm-dialog';
             confirmDialog.innerHTML = `
                 <div class="confirm-dialog-content">
-                    <h3 id="confirm-dialog-title">${title}</h3>
-                    <p id="confirm-dialog-message">${message}</p>
+                    <h3 id="confirm-dialog-title"></h3>
+                    <p id="confirm-dialog-message"></p>
                     <div class="confirm-dialog-buttons">
                         <button class="btn btn-danger" id="confirm-dialog-ok">確認</button>
                         <button class="btn btn-secondary" id="confirm-dialog-cancel">取消</button>
@@ -415,11 +529,11 @@ function showConfirmDialog(message, title = '確認操作') {
                 </div>
             `;
             document.body.appendChild(confirmDialog);
-        } else {
-            // 更新現有對話框
-            document.getElementById('confirm-dialog-title').textContent = title;
-            document.getElementById('confirm-dialog-message').textContent = message;
         }
+        // 標題與內文一律用 textContent 放進去：呼叫端哪天把顧客填的內容傳進來，
+        // 也不會被當成 HTML 執行
+        document.getElementById('confirm-dialog-title').textContent = title;
+        document.getElementById('confirm-dialog-message').textContent = message;
         
         const okBtn = document.getElementById('confirm-dialog-ok');
         const cancelBtn = document.getElementById('confirm-dialog-cancel');
@@ -604,6 +718,10 @@ async function initializeAdminCommon() {
             debounce,
             handleError,
             isAdmin,
+            resetFirestoreConnection,
+            maybeResetFirestoreConnection,
+            noteFirestoreSuccess,
+            loadWithRetry,
             getCurrentUser: () => currentUser
         };
         
@@ -635,6 +753,10 @@ if (typeof window !== 'undefined') {
         debounce,
         handleError,
         isAdmin,
+        resetFirestoreConnection,
+        maybeResetFirestoreConnection,
+        noteFirestoreSuccess,
+        loadWithRetry,
         getCurrentUser: () => currentUser
     };
 }

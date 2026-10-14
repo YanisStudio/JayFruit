@@ -55,11 +55,25 @@
     top: 15px;
     right: 20px;
     transition: color 0.3s;
+    /* 關閉鈕是真的 <button>（鍵盤走得到），清掉瀏覽器預設的按鈕外觀 */
+    -webkit-appearance: none;
+    appearance: none;
+    background: none;
+    border: 0;
+    padding: 0;
+    line-height: 1;
+    font-family: inherit;
 }
 
 .close-btn:hover,
 .close-btn:focus {
     color: #666;
+}
+
+.close-btn:focus-visible {
+    outline: 2px solid #2e7d32;
+    outline-offset: 3px;
+    border-radius: 3px;
 }
 
 /* 彈窗標題 */

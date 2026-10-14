@@ -2,6 +2,14 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
+    <!-- firebase-warmup：讓瀏覽器一開始解析頁面就先跟 Firebase 握手、下載 SDK，
+         不用等到下面載入 Firebase 的 module 腳本才開始。版本號要跟 import 的一致。 -->
+    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-lite.js">
     <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="images/favicon-16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="images/apple-touch-icon.png">
@@ -11,31 +19,31 @@
     <meta name="description" content="杰の御果園提供台灣高山優質水果，新鮮直送到府。精選梨子、水蜜桃、蘋果及各式水果禮盒，品質保證。">
     <meta name="keywords" content="台灣水果,高山水果,新鮮水果,水果禮盒,梨子,水蜜桃,蘋果,杰の御果園,果園直送,有機水果">
     <meta name="author" content="杰の御果園">
-    
+
     <!-- Open Graph 標籤 -->
     <meta property="og:title" content="杰の御果園 - 優質台灣高山水果直送">
     <meta property="og:description" content="台灣高山優質水果，新鮮直送到府。精選梨子、水蜜桃、蘋果及各式水果禮盒，品質保證。">
     <meta property="og:image" content="https://jayfarmer.tw/images/logo.jpg">
     <meta property="og:url" content="https://jayfarmer.tw/order-addon.html">
     <meta property="og:type" content="website">
-    
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/common.css">
-    <link rel="stylesheet" href="css/cart.css">
-    <link rel="stylesheet" href="css/checkout.css">
-    <link rel="stylesheet" href="css/payment.css">
-    <link rel="stylesheet" href="css/auth-modals.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+    <link rel="stylesheet" href="css/style.css?v=20261014">
+    <link rel="stylesheet" href="css/common.css?v=20261014">
+    <link rel="stylesheet" href="css/cart.css?v=20261014">
+    <link rel="stylesheet" href="css/checkout.css?v=20261014">
+    <link rel="stylesheet" href="css/payment.css?v=20261014">
+    <link rel="stylesheet" href="css/auth-modals.css?v=20261014">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer">
 
     <!-- Firebase SDK引入 -->
-    <script src="js/firebase-config.js"></script>
+    <script src="js/firebase-config.js?v=20261014"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { 
-            getAuth, 
-            createUserWithEmailAndPassword, 
-            signInWithEmailAndPassword, 
-            signOut, 
+        import {
+            getAuth,
+            createUserWithEmailAndPassword,
+            signInWithEmailAndPassword,
+            signOut,
             onAuthStateChanged,
             sendSignInLinkToEmail,
             isSignInWithEmailLink,
@@ -51,34 +59,37 @@
             signInWithCredential,
             signInWithCustomToken
         } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { 
-            initializeFirestore, 
-            collection, 
-            doc, 
-            setDoc, 
+        import {
+            initializeFirestore,
+            terminate,
+            collection,
+            doc,
+            setDoc,
             getDoc,
             getDocs,
-            getDocsFromServer,
+            getDocs as getDocsFromServer,
             addDoc,
             updateDoc,
             increment,
             query,
             orderBy,
             where,
-            serverTimestamp 
-        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-        
+            serverTimestamp
+        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-lite.js";
+
         const firebaseConfig = window.FIREBASE_CONFIG;
-        
+
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        // 自動偵測目前網路環境是否會擋掉預設的串流連線，會的話自動改用相容性更好的
-        // 長輪詢，降低連線逾時、被誤判成「查無資料」的機率
-        const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
-        
+        // 連線設定統一放在 js/firebase-config.js 的 FIRESTORE_SETTINGS（原因寫在那裡）
+        const db = initializeFirestore(app, window.FIRESTORE_SETTINGS);
+
         window.firebaseServices = {
             auth: auth,
             db: db,
+            app: app,
+            initializeFirestore,
+            terminate,
             getAuth,
             createUserWithEmailAndPassword,
             signInWithEmailAndPassword,
@@ -111,7 +122,7 @@
             signInWithCredential,
             signInWithCustomToken
         };
-        
+
         window.firebaseInitialized = true;
         window.dispatchEvent(new Event('firebaseReady'));
     </script>
@@ -603,11 +614,11 @@
             .addon-content {
                 grid-template-columns: 1fr;
             }
-            
+
             .addon-summary {
                 position: static;
             }
-            
+
             .products-grid {
                 grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
             }
@@ -621,11 +632,11 @@
             .original-order-info {
                 grid-template-columns: 1fr;
             }
-            
+
             .products-grid {
                 grid-template-columns: 1fr;
             }
-            
+
             .addon-header,
             .products-selection,
             .addon-summary,
@@ -638,25 +649,26 @@
             .addon-section {
                 padding: 30px 0;
             }
-            
+
             .addon-header,
             .products-selection,
             .addon-summary,
             .original-items-section {
                 padding: 1rem;
             }
-            
+
             .addon-product-actions {
                 flex-direction: column;
                 gap: 0.5rem;
             }
-            
+
             .quantity-control {
                 width: 100%;
                 justify-content: center;
             }
         }
     </style>
+    <link rel="stylesheet" href="css/storefront.css?v=20261014">
 </head>
 <body>
     <header>
@@ -664,7 +676,7 @@
             <button class="menu-toggle" id="menu-toggle">
                 <i class="fas fa-bars"></i>
             </button>
-            
+
             <a href="index.html" class="logo-container">
                 <img src="images/logo.jpg" alt="杰の御果園 logo" width="492" height="649" class="logo-image">
                 <div class="logo">
@@ -672,7 +684,7 @@
                     <p>新鮮直送・品質保證</p>
                 </div>
             </a>
-            
+
             <div class="mobile-header-actions">
                 <div class="cart-icon-container">
                     <a href="cart.html" class="cart-icon">
@@ -681,19 +693,19 @@
                     </a>
                 </div>
             </div>
-            
+
             <nav id="main-nav">
                 <ul>
                     <li><a href="index.html">首頁</a></li>
                     <li><a href="products.html">產品</a></li>
                     <li><a href="about.html">關於果園</a></li>
                     <li><a href="contact.html">聯絡我們</a></li>
-                    
+
                     <div class="mobile-actions">
                         <div class="user-actions" id="user-actions-mobile">
                             <a href="#" class="btn-login" id="login-btn-mobile">登入</a>
                         </div>
-                        
+
                         <div class="user-profile-mobile" id="user-profile-mobile">
                             <div class="user-info">
                                 <i class="fas fa-user-circle"></i>
@@ -710,7 +722,7 @@
                     </div>
                 </ul>
             </nav>
-            
+
             <div class="header-right">
                 <div class="cart-icon-container">
                     <a href="cart.html" class="cart-icon">
@@ -718,11 +730,11 @@
                         <span class="cart-count" id="cart-count">0</span>
                     </a>
                 </div>
-                
+
                 <div class="user-actions" id="user-actions">
                     <a href="#" class="btn-login" id="login-btn">登入</a>
                 </div>
-                
+
                 <div class="user-profile" id="user-profile">
                     <div class="user-name" id="user-dropdown-btn">
                         <i class="fas fa-user-circle"></i>
@@ -740,9 +752,9 @@
             </div>
         </div>
     </header>
-    
+
     <div class="menu-overlay" id="menu-overlay"></div>
-    
+
     <main>
         <!-- Hero 區域 -->
         <section class="product-hero">
@@ -753,7 +765,7 @@
                 </div>
             </div>
         </section>
-        
+
         <!-- 訂單加購內容 -->
         <section class="addon-section">
             <div class="container addon-container">
@@ -787,7 +799,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- 原訂單商品列表 -->
                 <div class="original-items-section">
                     <div class="original-items-header">
@@ -800,30 +812,30 @@
                         <div class="loading">載入原訂單商品中...</div>
                     </div>
                 </div>
-                
+
                 <!-- 加購內容 -->
                 <div class="addon-content">
                     <!-- 商品選擇區域 -->
                     <div class="products-selection">
                         <h3><i class="fas fa-plus-circle"></i> 選擇加購商品</h3>
                         <p>選擇您想要加購的水果商品，我們會重新計算運費並為您安排一起配送。</p>
-                        
+
                         <div class="products-grid" id="products-grid">
                             <div class="loading">載入商品中...</div>
                         </div>
                     </div>
-                    
+
                     <!-- 加購摘要 -->
                     <div class="addon-summary">
                         <h3><i class="fas fa-calculator"></i> 加購摘要</h3>
-                        
+
                         <div class="addon-items" id="addon-items">
                             <div class="no-addon-items">
                                 <i class="fas fa-shopping-basket" style="font-size: 2rem; color: #ddd; margin-bottom: 1rem;"></i>
                                 <p>尚未選擇加購商品</p>
                             </div>
                         </div>
-                        
+
                         <div class="cost-breakdown">
                             <div class="cost-row">
                                 <span>原商品小計：</span>
@@ -858,12 +870,12 @@
                                 <span id="price-difference">$0</span>
                             </div>
                         </div>
-                        
+
                         <div class="shipping-notice">
                             <i class="fas fa-info-circle"></i>
                             加購商品將與原訂單一起配送，運費將重新計算。
                         </div>
-                        
+
                         <div class="addon-actions">
                             <button id="confirm-addon-btn" class="btn-addon-primary" disabled>
                                 確認加購並付差價
@@ -877,41 +889,60 @@
             </div>
         </section>
     </main>
-    
-    <footer>
+
+    <footer class="site-footer">
         <div class="container">
             <div class="footer-content">
                 <div class="footer-section">
-                    <h3>粉絲專頁</h3>
-                    <p>為您提供最優質的水果選擇</p>
+                    <h3>杰の御果園</h3>
+                    <p>梨山高山果園直營，新鮮直送到府</p>
                     <div class="social-links">
-                        <a href="https://www.facebook.com/jay0955688658" target="_blank" title="Facebook 粉絲頁"><i class="fab fa-facebook"></i></a>
-                        <a href="https://line.me/R/ti/p/@farmer-jay" target="_blank" title="LINE官方帳號"><i class="fab fa-line"></i></a>
+                        <a href="https://www.facebook.com/jay0955688658" target="_blank" rel="noopener" title="Facebook 粉絲專頁" aria-label="Facebook 粉絲專頁"><i class="fab fa-facebook"></i></a>
+                        <a href="https://line.me/R/ti/p/@farmer-jay" target="_blank" rel="noopener" title="LINE 官方帳號" aria-label="LINE 官方帳號"><i class="fab fa-line"></i></a>
                     </div>
                 </div>
-                
+
+                <div class="footer-section">
+                    <h3>水果分類</h3>
+                    <ul class="footer-links">
+                        <li><a href="products.html?category=peach">水蜜桃</a></li>
+                        <li><a href="products.html?category=persimmon">甜柿</a></li>
+                        <li><a href="products.html?category=pear">梨子</a></li>
+                        <li><a href="products.html?category=apple">蘋果</a></li>
+                        <li><a href="products.html?category=gift">禮盒</a></li>
+                        <li><a href="products.html">所有商品 &raquo;</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h3>顧客服務</h3>
+                    <ul class="footer-links">
+                        <li><a href="about.html">關於果園</a></li>
+                        <li><a href="contact.html">聯絡我們</a></li>
+                        <li><a href="orders.html">訂單查詢</a></li>
+                        <li><a href="cart.html">購物車</a></li>
+                    </ul>
+                </div>
+
                 <div class="footer-section">
                     <h3>聯絡資訊</h3>
-                    <p><a href="https://line.me/R/ti/p/@farmer-jay" target="_blank" style="color: #06c755; text-decoration: none;"><i class="fab fa-line"></i> LINE 官方帳號：@farmer-jay</a></p>
+                    <p><a href="https://line.me/R/ti/p/@farmer-jay" target="_blank" rel="noopener" style="color: #06c755;"><i class="fab fa-line"></i> LINE 官方帳號：@farmer-jay</a></p>
                     <p><i class="fas fa-map-marker-alt"></i> 果園地址：台中市和平區環山</p>
-                </div>
-                
-                <div class="footer-section">
-                    <h3>客服時間</h3>
-                    <p><i class="far fa-clock"></i> 週一至週五：9:00 - 18:00</p>
+                    <p><i class="far fa-clock"></i> 客服時間：週一至週五 9:00 - 18:00</p>
                 </div>
             </div>
-            
+
             <div class="copyright">
                 <p>&copy; 2025 杰の御果園。保留所有權利。</p>
             </div>
         </div>
     </footer>
-    
+
     <!-- 引入必要的 JavaScript -->
-    <script src="js/auth-modals.js"></script>
-    <script src="js/common.js"></script>
-    <script src="js/member.js"></script>
+    <script src="js/auth-modals.js?v=20261014"></script>
+    <script src="js/common.js?v=20261014"></script>
+    <script src="js/shipping-calc.js?v=20261014"></script>
+    <script src="js/member.js?v=20261014"></script>
 
     <script>
         // 等待 Firebase 初始化
@@ -929,27 +960,14 @@
         let originalOrder = null;
         let availableProducts = [];
         let addonItems = [];
-        let shippingSettings = {
-            freeShipping: { enabled: false, threshold: 0 },
-            calculationMode: 'fixed',
-            fixedRates: { home: 0 },
-            tieredRates: { home: [] }
-        };
+        // 運費設定（js/shipping-calc.js 的 ShippingCalc.load() 結果），讀取失敗時維持 null
+        let shippingConfig = null;
 
-        // 品類對應表 - 從admin/shipping.html複製
-        const categoryMap = {
-            'pear': '梨子',
-            'persimmon': '甜柿',
-            'peach': '水蜜桃',
-            'apple': '蘋果',
-            'gift': '禮盒',
-            'featured': '特色商品'
-        };
-
-        // 獲取商品品類的函數
+        // 商品的運費分類。新訂單的商品都有 category 欄位；很舊的訂單沒有，才用名稱猜
         function getProductCategory(product) {
+            if (product.category) return product.category;
             // 根據商品名稱或其他屬性判斷品類
-            const name = product.name.toLowerCase();
+            const name = String(product.name || '').toLowerCase();
             const tags = product.tags || [];
 
             if (name.includes('梨') || tags.includes('梨子')) return 'pear';
@@ -963,128 +981,15 @@
             return 'pear';
         }
 
-        // 階梯式運費計算函數 - 從admin/shipping.html複製並修正
-        function calculateTieredShipping(quantity, categoryRates) {
-            if (categoryRates.length === 0) {
-                return { fee: 0, description: '未設定階梯運費' };
-            }
-            
-            // 排序階梯（按最小數量）
-            const sortedRates = categoryRates.sort((a, b) => a.minQuantity - b.minQuantity);
-            
-            let totalFee = 0;
-            let remainingQuantity = quantity;
-            let descriptions = [];
-            
-            while (remainingQuantity > 0) {
-                let handled = false;
-                
-                // 從最高階梯開始檢查，優先使用能匹配的最高階梯
-                for (let i = sortedRates.length - 1; i >= 0; i--) {
-                    const rate = sortedRates[i];
-                    
-                    if (remainingQuantity >= rate.minQuantity) {
-                        // 能使用這個階梯，盡可能使用其最大容量
-                        const useQuantity = Math.min(remainingQuantity, rate.maxQuantity);
-                        
-                        totalFee += rate.fee;
-                        descriptions.push(`${rate.minQuantity}-${rate.maxQuantity}個區間：NT$ ${rate.fee}`);
-                        remainingQuantity -= useQuantity;
-                        handled = true;
-                        break;
-                    }
-                }
-                
-                // 如果沒有任何階梯能處理剩餘數量（低於最低階梯）
-                if (!handled) {
-                    descriptions.push(`${remainingQuantity}個：數量低於最低階梯，NT$ 0`);
-                    break;
-                }
-            }
-            
-            return { 
-                fee: totalFee, 
-                description: descriptions.join('，') 
-            };
-        }
-
-        // 完整的運費計算函數
+        // 運費計算：跟購物車、結帳頁共用 js/shipping-calc.js（同一套階梯邏輯與容錯）
         function calculateShippingFee(allItems) {
-            console.log('開始計算運費，商品列表:', allItems);
-            console.log('運費設定:', shippingSettings);
-            
             if (!allItems || allItems.length === 0) {
                 return { shipping: 0, details: '無商品' };
             }
-
-            // 計算商品總金額
-            let totalAmount = 0;
-            allItems.forEach(item => {
-                if (item.price && item.quantity) {
-                    totalAmount += item.price * item.quantity;
-                }
-            });
-
-            console.log('商品總金額:', totalAmount);
-
-            // 檢查免運條件
-            if (shippingSettings.freeShipping.enabled && 
-                totalAmount >= shippingSettings.freeShipping.threshold) {
-                return {
-                    shipping: 0,
-                    details: `購買金額 NT$ ${totalAmount.toLocaleString()} 達到免運門檻`
-                };
-            }
-
-            let shippingFee = 0;
-            let details = [];
-
-            if (shippingSettings.calculationMode === 'fixed') {
-                // 固定運費模式
-                shippingFee = shippingSettings.fixedRates.home || 0;
-                details.push(`固定運費：NT$ ${shippingFee}`);
-                
-            } else {
-                // 階梯式運費模式
-                const categoryTotals = {};
-                
-                // 計算各品類總數量
-                allItems.forEach(item => {
-                    const category = getProductCategory(item);
-                    if (!categoryTotals[category]) {
-                        categoryTotals[category] = 0;
-                    }
-                    categoryTotals[category] += item.quantity || 0;
-                });
-
-                console.log('各品類數量統計:', categoryTotals);
-                
-                // 計算各品類運費
-                Object.keys(categoryTotals).forEach(category => {
-                    const quantity = categoryTotals[category];
-                    const categoryRates = shippingSettings.tieredRates.home.filter(r => r.category === category);
-                    
-                    console.log(`${category} (${categoryMap[category]}) 數量:`, quantity, '階梯設定:', categoryRates);
-                    
-                    if (categoryRates.length === 0) {
-                        details.push(`${categoryMap[category]} ${quantity}個：未設定階梯運費，NT$ 0`);
-                        return;
-                    }
-                    
-                    const result = calculateTieredShipping(quantity, categoryRates);
-                    shippingFee += result.fee;
-                    details.push(`${categoryMap[category]} ${quantity}個：${result.description}`);
-                    
-                    console.log(`${category} 運費計算結果:`, result);
-                });
-            }
-
-            console.log('最終運費:', shippingFee, '明細:', details);
-
-            return {
-                shipping: shippingFee,
-                details: details.join('<br>')
-            };
+            const items = allItems.map(item => ({ ...item, category: getProductCategory(item) }));
+            const subtotal = items.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 0), 0);
+            const result = ShippingCalc.calculate(shippingConfig, items, subtotal, 'home');
+            return { shipping: result.fee, details: result.description };
         }
 
         document.addEventListener('DOMContentLoaded', async function() {
@@ -1097,7 +1002,7 @@
             // 檢查是否有訂單ID參數
             const urlParams = new URLSearchParams(window.location.search);
             const orderId = urlParams.get('orderId');
-            
+
             if (!orderId) {
                 showError('缺少訂單ID參數');
                 return;
@@ -1106,7 +1011,8 @@
             // 檢查用戶登入狀態
             window.firebaseServices.onAuthStateChanged(window.firebaseServices.auth, async function(user) {
                 if (user) {
-                    await loadShippingSettings();
+                    const shippingLoaded = await loadShippingSettings();
+                    if (!shippingLoaded) return;
                     const ownOrder = await loadOriginalOrder(orderId, user);
                     if (!ownOrder) return;
                     await loadAvailableProducts();
@@ -1120,70 +1026,20 @@
             });
         }
 
+        // 讀不到運費設定時不能用預設值繼續（以前會改用固定運費 80 元，
+        // 算出來的差價跟實際不符），直接告知顧客並停止
         async function loadShippingSettings() {
             try {
                 showLoading('載入運費設定中...');
-                
-                const db = window.firebaseServices.db;
-                const doc = window.firebaseServices.doc;
-                const getDoc = window.firebaseServices.getDoc;
-                const collection = window.firebaseServices.collection;
-                const getDocs = window.firebaseServices.getDocs;
-
-                // 這 4 筆讀取互相獨立，平行送出比一個一個 await 快
-                const [freeShippingSnap, calculationModeSnap, fixedRatesSnap, tieredRatesSnap] = await Promise.all([
-                    getDoc(doc(db, 'shippingSettings', 'freeShipping')),
-                    getDoc(doc(db, 'shippingSettings', 'calculationMode')),
-                    getDoc(doc(db, 'shippingRates', 'fixedRates')),
-                    getDocs(collection(db, 'tieredRates'))
-                ]);
-
-                // 載入免運設定
-                if (freeShippingSnap.exists()) {
-                    shippingSettings.freeShipping = freeShippingSnap.data();
-                }
-
-                // 載入計算模式
-                if (calculationModeSnap.exists()) {
-                    shippingSettings.calculationMode = calculationModeSnap.data().mode || 'fixed';
-                }
-
-                // 載入固定運費
-                if (fixedRatesSnap.exists()) {
-                    const data = fixedRatesSnap.data();
-                    // 處理舊格式兼容性
-                    if (typeof data.home === 'object') {
-                        shippingSettings.fixedRates.home = 0;
-                    } else {
-                        shippingSettings.fixedRates.home = data.home || 0;
-                    }
-                }
-
-                // 載入階梯運費
-                const homeRates = [];
-                
-                tieredRatesSnap.forEach(docSnap => {
-                    const data = docSnap.data();
-                    if (data.method === 'home') {
-                        homeRates.push({ id: docSnap.id, ...data });
-                    }
-                });
-                
-                shippingSettings.tieredRates.home = homeRates.sort((a, b) => a.minQuantity - b.minQuantity);
-
-                console.log('載入的運費設定:', shippingSettings);
+                shippingConfig = await ShippingCalc.load(window.firebaseServices);
+                if (window.noteFirestoreSuccess) window.noteFirestoreSuccess();
                 hideLoading();
-                
+                return true;
             } catch (error) {
                 console.error('載入運費設定失敗:', error);
                 hideLoading();
-                // 使用預設設定
-                shippingSettings = {
-                    freeShipping: { enabled: false, threshold: 0 },
-                    calculationMode: 'fixed',
-                    fixedRates: { home: 80 },
-                    tieredRates: { home: [] }
-                };
+                showError('網路連線不穩定，無法計算運費，請重新整理頁面後再試');
+                return false;
             }
         }
 
@@ -1236,55 +1092,55 @@
 
         function displayOriginalOrderInfo() {
             if (!originalOrder) return;
-            
+
             const subtotal = originalOrder.subtotal || 0;
             const shippingFee = originalOrder.shippingFee || 0;
             const total = originalOrder.total || 0;
-            
+
             document.getElementById('original-order-number').textContent = originalOrder.orderNumber || '未知';
             document.getElementById('original-subtotal').textContent = `NT$ ${subtotal}`;
             document.getElementById('original-shipping-fee').textContent = `NT$ ${shippingFee}`;
             document.getElementById('original-order-total').textContent = `NT$ ${total}`;
             document.getElementById('original-customer-name').textContent = originalOrder.customer?.name || '未知';
-            
+
             const statusText = getOrderStatusText(originalOrder.status);
             document.getElementById('original-order-status').textContent = statusText;
-            
+
             // 更新摘要中的原訂單金額
             document.getElementById('cost-original-subtotal').textContent = `NT$ ${subtotal}`;
             document.getElementById('cost-original-shipping').textContent = `NT$ ${shippingFee}`;
-            
+
             updateCostCalculation();
         }
 
         function displayOriginalItems() {
             const originalItemsList = document.getElementById('original-items-list');
-            
+
             if (!originalOrder.items || originalOrder.items.length === 0) {
                 originalItemsList.innerHTML = '<div class="no-items">此訂單沒有商品資訊</div>';
                 return;
             }
-            
+
             let itemsHTML = '';
-            
+
             originalOrder.items.forEach(item => {
                 itemsHTML += `
                     <div class="original-item-card">
                         <div class="original-item-info">
-                            <img src="${item.imageUrl || 'images/placeholder.jpg'}"
+                            <img src="${window.escapeHtml(item.imageUrl || 'images/placeholder.jpg')}"
                                  alt="${window.escapeHtml(item.name)}"
                                  class="original-item-image"
-                                 onerror="this.src='images/placeholder.jpg'">
+                                 onerror="this.onerror=null; this.src='images/placeholder.jpg'">
                             <div class="original-item-details">
                                 <div class="original-item-name">${window.escapeHtml(item.name)}</div>
-                                <div class="original-item-price">NT$ ${item.price}/${item.unit || '個'}</div>
+                                <div class="original-item-price">NT$ ${item.price}/${window.escapeHtml(item.unit || '個')}</div>
                                 <div class="original-item-quantity">數量: ${item.quantity}</div>
                             </div>
                         </div>
                     </div>
                 `;
             });
-            
+
             originalItemsList.innerHTML = itemsHTML;
         }
 
@@ -1312,28 +1168,28 @@
 
         function renderProductsGrid() {
             const productsGrid = document.getElementById('products-grid');
-            
+
             if (availableProducts.length === 0) {
                 productsGrid.innerHTML = '<div class="no-products">目前沒有可加購的商品</div>';
                 return;
             }
-            
+
             let productsHTML = '';
-            
+
             availableProducts.forEach(product => {
-                const tagHTML = product.tags?.length > 0 ? `<span class="product-tag">${product.tags[0]}</span>` : '';
-                const stockText = product.stock > 0 ? `庫存: ${product.stock} 件` : '無庫存';
-                
+                const tagHTML = product.tags?.length > 0 ? `<span class="product-tag">${window.escapeHtml(product.tags[0])}</span>` : '';
+                const stockText = product.stock > 0 ? `庫存: ${product.stock} ${window.escapeHtml(product.unit)}` : '無庫存';
+
                 productsHTML += `
                     <div class="addon-product-card" data-product-id="${product.id}">
                         <div class="addon-product-image">
                             ${tagHTML}
-                            <img src="${product.imageUrl}" alt="${window.escapeHtml(product.name)}" onerror="this.src='images/placeholder.jpg'">
+                            <img src="${window.escapeHtml(product.imageUrl)}" alt="${window.escapeHtml(product.name)}" onerror="this.onerror=null; this.src='images/placeholder.jpg'">
                         </div>
                         <div class="addon-product-info">
                             <h3>${window.escapeHtml(product.name)}</h3>
                             <p class="addon-product-desc">${window.escapeHtml(product.description)}</p>
-                            <p class="addon-product-price">NT$ ${product.price}/${product.unit}</p>
+                            <p class="addon-product-price">NT$ ${product.price}/${window.escapeHtml(product.unit)}</p>
                             <p class="stock-info">${stockText}</p>
                             <div class="addon-product-actions">
                                 <div class="quantity-control">
@@ -1349,7 +1205,7 @@
                     </div>
                 `;
             });
-            
+
             productsGrid.innerHTML = productsHTML;
             initProductControls();
         }
@@ -1361,7 +1217,7 @@
                     const productId = this.dataset.productId;
                     const input = document.querySelector(`.quantity-input[data-product-id="${productId}"]`);
                     const product = availableProducts.find(p => p.id === productId);
-                    
+
                     if (this.classList.contains('minus-btn')) {
                         if (input.value > 1) {
                             input.value = parseInt(input.value) - 1;
@@ -1379,11 +1235,12 @@
                 input.addEventListener('change', function() {
                     const productId = this.dataset.productId;
                     const product = availableProducts.find(p => p.id === productId);
-                    
-                    let value = parseInt(this.value);
-                    if (isNaN(value) || value < 1) value = 1;
-                    if (value > product.stock) value = product.stock;
-                    
+
+                    let value = parseInt(this.value, 10);
+                    const upperLimit = product && product.stock > 0 ? product.stock : 1;
+                    if (!Number.isFinite(value) || value < 1) value = 1;
+                    if (value > upperLimit) value = upperLimit;
+
                     this.value = value;
                 });
             });
@@ -1392,8 +1249,8 @@
             document.querySelectorAll('.add-to-addon-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
                     const productId = this.dataset.productId;
-                    const quantity = parseInt(document.querySelector(`.quantity-input[data-product-id="${productId}"]`).value);
-                    addToAddon(productId, quantity);
+                    const quantity = parseInt(document.querySelector(`.quantity-input[data-product-id="${productId}"]`).value, 10);
+                    addToAddon(productId, Number.isFinite(quantity) && quantity > 0 ? quantity : 1);
                 });
             });
         }
@@ -1404,10 +1261,15 @@
 
             // 檢查是否已經在加購列表中
             const existingIndex = addonItems.findIndex(item => item.id === productId);
-            
+
             if (existingIndex > -1) {
-                // 更新數量
-                addonItems[existingIndex].quantity += quantity;
+                // 更新數量（不能超過庫存）
+                const newQuantity = addonItems[existingIndex].quantity + quantity;
+                if (newQuantity > product.stock) {
+                    showToast(`${product.name} 庫存不足，最多可加購 ${product.stock} ${product.unit}`);
+                    return;
+                }
+                addonItems[existingIndex].quantity = newQuantity;
             } else {
                 // 新增商品
                 addonItems.push({
@@ -1418,6 +1280,7 @@
                     imageUrl: product.imageUrl,
                     weight: product.weight || 1000,
                     quantity: quantity,
+                    category: product.category || 'other',
                     tags: product.tags || []
                 });
             }
@@ -1429,7 +1292,7 @@
 
         function renderAddonItems() {
             const addonItemsContainer = document.getElementById('addon-items');
-            
+
             if (addonItems.length === 0) {
                 addonItemsContainer.innerHTML = `
                     <div class="no-addon-items">
@@ -1441,13 +1304,13 @@
             }
 
             let itemsHTML = '';
-            
+
             addonItems.forEach((item, index) => {
                 itemsHTML += `
                     <div class="addon-item">
                         <div class="addon-item-info">
                             <div class="addon-item-name">${window.escapeHtml(item.name)}</div>
-                            <div class="addon-item-details">NT$ ${item.price}/${item.unit} x ${item.quantity} = NT$ ${item.price * item.quantity}</div>
+                            <div class="addon-item-details">NT$ ${item.price}/${window.escapeHtml(item.unit)} x ${item.quantity} = NT$ ${item.price * item.quantity}</div>
                         </div>
                         <div class="addon-item-actions">
                             <div class="quantity-control">
@@ -1460,38 +1323,39 @@
                     </div>
                 `;
             });
-            
+
             addonItemsContainer.innerHTML = itemsHTML;
         }
 
         function updateAddonQuantity(index, change) {
             if (index < 0 || index >= addonItems.length) return;
-            
+
             const item = addonItems[index];
             const product = availableProducts.find(p => p.id === item.id);
-            
+            if (!product) return;
+
             item.quantity += change;
-            
+
             if (item.quantity <= 0) {
                 removeFromAddon(index);
                 return;
             }
-            
+
             if (item.quantity > product.stock) {
                 item.quantity = product.stock;
                 showToast(`${item.name} 庫存不足，已調整為最大可購買數量`);
             }
-            
+
             renderAddonItems();
             updateCostCalculation();
         }
 
         function removeFromAddon(index) {
             if (index < 0 || index >= addonItems.length) return;
-            
+
             const item = addonItems[index];
             addonItems.splice(index, 1);
-            
+
             renderAddonItems();
             updateCostCalculation();
             showToast(`已移除 ${item.name} 從加購清單`);
@@ -1502,35 +1366,35 @@
         window.removeFromAddon = removeFromAddon;
 
         function updateCostCalculation() {
-            if (!originalOrder || !shippingSettings) return;
-            
+            if (!originalOrder || !shippingConfig) return;
+
             const originalSubtotal = originalOrder.subtotal || 0;
             const originalShippingFee = originalOrder.shippingFee || 0;
             const originalTotal = originalOrder.total || 0;
-            
+
             // 計算加購商品小計
             const addonSubtotal = addonItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            
+
             // 新商品小計 = 原商品小計 + 加購商品小計
             const newSubtotal = originalSubtotal + addonSubtotal;
-            
+
             // 合併所有商品進行運費計算
             const allItems = [...(originalOrder.items || []), ...addonItems];
-            
+
             console.log('計算運費 - 所有商品:', allItems);
-            
+
             // 重新計算運費
             const shippingResult = calculateShippingFee(allItems);
             const newShippingFee = shippingResult.shipping;
-            
+
             console.log('運費計算結果:', shippingResult);
-            
+
             // 應補運費 = 新運費 - 原運費
             const shippingDifference = newShippingFee - originalShippingFee;
-            
+
             // 新訂單總計 = 新商品小計 + 新運費
             const newTotal = newSubtotal + newShippingFee;
-            
+
             // 需補差價 = 新訂單總計 - 原訂單總計
             const priceDifference = newTotal - originalTotal;
 
@@ -1574,10 +1438,10 @@
                 const originalSubtotal = originalOrder.subtotal || 0;
                 const originalShippingFee = originalOrder.shippingFee || 0;
                 const originalTotal = originalOrder.total || 0;
-                
+
                 const addonSubtotal = addonItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
                 const newSubtotal = originalSubtotal + addonSubtotal;
-                
+
                 // 合併所有商品進行運費計算
                 const allItems = [...(originalOrder.items || []), ...addonItems];
                 const shippingResult = calculateShippingFee(allItems);
@@ -1602,9 +1466,10 @@
 新訂單總額: NT$ ${newTotal}
 需補差價: NT$ ${priceDifference}`;
 
-                // 更新原訂單
+                // 更新原訂單（id 是讀取時補上的，不是訂單文件本身的欄位，不要寫回去）
+                const { id: originalOrderId, ...originalOrderFields } = originalOrder;
                 const updatedOrder = {
-                    ...originalOrder,
+                    ...originalOrderFields,
                     items: allItems,
                     subtotal: newSubtotal,
                     shippingFee: newShippingFee,
@@ -1749,7 +1614,7 @@
                 </div>
             `;
             document.body.appendChild(modal);
-            
+
             // 3秒後自動關閉
             setTimeout(() => {
                 if (document.body.contains(modal)) {
@@ -1758,32 +1623,8 @@
             }, 3000);
         }
 
-        function showToast(message) {
-            if (typeof window.showToast === 'function') {
-                window.showToast(message);
-            } else {
-                // 簡單的 toast 實現
-                const toast = document.createElement('div');
-                toast.style.cssText = `
-                    position: fixed;
-                    top: 20px;
-                    right: 20px;
-                    background: #4caf50;
-                    color: white;
-                    padding: 1rem 1.5rem;
-                    border-radius: 8px;
-                    z-index: 10001;
-                    font-weight: 500;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-                `;
-                toast.textContent = message;
-                document.body.appendChild(toast);
-                
-                setTimeout(() => {
-                    toast.remove();
-                }, 3000);
-            }
-        }
+        // showToast 由 js/common.js 提供。這裡以前另外宣告了一個全域的 showToast，
+        // 會覆蓋掉 common.js 的版本又呼叫 window.showToast（也就是自己），一跳提示就無限遞迴
     </script>
 </body>
 </html>

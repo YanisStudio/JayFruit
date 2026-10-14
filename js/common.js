@@ -1,5 +1,5 @@
 /**
- * 球根花卉團購網站 - 共用功能模組
+ * 杰の御果園網站 - 共用功能模組
  * 包含所有頁面的共同功能
  */
 
@@ -298,7 +298,8 @@ function updateCartCount(animate = false) {
     const cart = JSON.parse(localStorage.getItem('cart')) || [];
     
     // 計算總商品數量
-    const totalItems = cart.reduce((total, item) => total + item.quantity, 0);
+    // 數量欄位壞掉（null/NaN）時當成 0，不要讓購物車圖示顯示 NaN
+    const totalItems = cart.reduce((total, item) => total + (Number(item && item.quantity) || 0), 0);
     
     // 更新購物車圖標數量
     const cartCountElements = document.querySelectorAll('.cart-count');
@@ -402,6 +403,10 @@ function addToCart(productId, name, price, quantity = 1, stock = 0) {
         
         cart[existingItemIndex].quantity = newQuantity;
         cart[existingItemIndex].stock = stock;
+        // 同時更新成目前的價格與名稱：購物車裡可能是後台改價之前加入的舊價格，
+        // 不更新的話顧客到結帳頁會被「價格已更新」擋下來
+        cart[existingItemIndex].price = price;
+        cart[existingItemIndex].name = name;
     } else {
         cart.push({
             id: productId,
@@ -421,7 +426,10 @@ function addToCart(productId, name, price, quantity = 1, stock = 0) {
  * 初始化加入購物車按鈕
  */
 function initAddToCartButtons() {
-    const addToCartButtons = document.querySelectorAll('.add-to-cart-btn');
+    // 排除商品詳細介紹彈窗裡的那顆按鈕：它不在 .product-card 裡，由
+    // openProductDetailModal() 直接設 onclick。這裡 cloneNode 會把 onclick 一起換掉，
+    // 彈窗開著時剛好重新渲染商品格（換頁、篩選、改視窗大小）就會讓彈窗裡的按鈕失效
+    const addToCartButtons = document.querySelectorAll('.add-to-cart-btn:not(#pd-add-to-cart)');
     addToCartButtons.forEach(button => {
         // 移除現有事件監聽器
         const newButton = button.cloneNode(true);
@@ -501,61 +509,100 @@ function waitForAuthReady() {
     return authReadyPromise;
 }
 
-// Firestore 底層連線偶爾會卡在錯誤狀態，同一個連線物件繼續重試往往要等很多次
-// 才會恢復，跟手動整頁重新整理立刻正常有明顯落差（重新整理會建立全新連線，
-// 繞過卡住的舊連線）。這個函式做的事跟重新整理達到同樣效果，但只換掉
-// window.firebaseServices.db 這一個屬性，不整個換掉 window.firebaseServices
-// 物件、也不重新整理頁面，所以會保留使用者當下的捲動位置、篩選條件等狀態。
-//
-// 安全前提：全站沒有地方把 db 從 window.firebaseServices 解構出來，快取成
-// 長生命週期的區域變數（例如在 DOMContentLoaded 最外層 const { db } = ...
-// 之後給很多函式共用）——那樣的變數換連線後不會自動更新，還在用已經
-// terminate 掉的舊連線。要在每次真正要用 db 的當下，才去
-// window.firebaseServices.db 現抓（全站已經逐一確認過都是這樣寫的）。
-let resettingFirestoreConnection = null;
-let lastFirestoreResetAt = 0;
-const FIRESTORE_RESET_COOLDOWN_MS = 60000;
-
+/**
+ * 重建 Firestore 連線：把舊的連線物件關掉，換一個全新的。
+ *
+ * 只換 window.firebaseServices 的 db 屬性，不整個換掉物件、也不重新整理頁面，
+ * 所有「每次要用才即時讀取 window.firebaseServices.db」的地方下一次呼叫就會
+ * 自動用到新連線。安全前提：沒有地方把 db 在模組載入時就解構成長生命週期的
+ * 區域變數。
+ *
+ * 一定要帶回 js/firebase-config.js 的 FIRESTORE_SETTINGS，跟頁面初始化時同一份。
+ */
 async function resetFirestoreConnection() {
-    if (!CommonModule.firebase || !CommonModule.firebase.app ||
-        !CommonModule.firebase.initializeFirestore || !CommonModule.firebase.terminate) {
-        console.warn('這個頁面沒有暴露重建 Firestore 連線所需的函式，略過');
-        return;
+    const services = window.firebaseServices;
+    if (!services || !services.app || !services.initializeFirestore || !services.terminate) {
+        console.warn('無法重建 Firestore 連線：這個頁面沒有暴露 app/initializeFirestore/terminate');
+        return false;
     }
-
-    const now = Date.now();
-    if (now - lastFirestoreResetAt < FIRESTORE_RESET_COOLDOWN_MS) {
-        console.log('剛重建過 Firestore 連線，冷卻中，略過這次');
-        return;
+    try {
+        await services.terminate(services.db);
+        services.db = services.initializeFirestore(services.app, window.FIRESTORE_SETTINGS);
+        console.log('Firestore 連線已重建');
+        return true;
+    } catch (error) {
+        console.error('重建 Firestore 連線失敗:', error);
+        return false;
     }
-
-    if (resettingFirestoreConnection) {
-        return resettingFirestoreConnection;
-    }
-
-    resettingFirestoreConnection = (async () => {
-        try {
-            console.log('嘗試重建 Firestore 連線...');
-            const oldDb = CommonModule.firebase.db;
-            await CommonModule.firebase.terminate(oldDb);
-            const newDb = CommonModule.firebase.initializeFirestore(CommonModule.firebase.app, {
-                experimentalAutoDetectLongPolling: true
-            });
-            // 只換 window.firebaseServices 的 db 屬性，不整個換掉物件——
-            // 所有透過 window.firebaseServices.db 即時讀取的地方會自動抓到新連線
-            window.firebaseServices.db = newDb;
-            lastFirestoreResetAt = Date.now();
-            console.log('Firestore 連線已重建');
-        } catch (error) {
-            console.error('重建 Firestore 連線失敗:', error);
-        } finally {
-            resettingFirestoreConnection = null;
-        }
-    })();
-
-    return resettingFirestoreConnection;
 }
 window.resetFirestoreConnection = resetFirestoreConnection;
+
+// ---- 什麼時候才該重建連線 ----
+//
+// 全站已改用 Firestore Lite（見 js/firebase-config.js），沒有長連線會卡住，
+// 這套政策保留當安全網：讀取失敗時換一個新的實例沒有壞處。分兩種情況：
+//
+// 1. 這一頁「從來沒有成功讀到過資料」：一失敗就重建，之後每次失敗間隔夠久就再重建。
+// 2. 這一頁已經成功讀過資料，之後才失敗（網路中途斷掉等）：terminate() 會中止所有
+//    進行中的作業，連線如果只是慢、正要成功，一失敗就重建等於砍掉重練。
+//    先讓它自己恢復，持續失敗夠久才重建。
+const NEVER_CONNECTED_RESET_GAP_MS = 9000;
+const RESET_AFTER_MS = 30000;
+const RESET_COOLDOWN_MS = 60000;
+let everSucceeded = false;
+let firstFailureAt = 0;
+let lastResetAt = 0;
+
+// 讀取成功時呼叫（包含「成功但結果是空的」）：標記「這一頁連上過」，並把連續失敗的計時歸零
+function noteFirestoreSuccess() {
+    everSucceeded = true;
+    firstFailureAt = 0;
+}
+
+/**
+ * 讀取失敗時呼叫，依上面兩種情況決定要不要真的重建連線
+ * @returns {Promise<boolean>} 這次有沒有真的重建
+ */
+async function maybeResetFirestoreConnection() {
+    const now = Date.now();
+    if (!everSucceeded) {
+        if (now - lastResetAt < NEVER_CONNECTED_RESET_GAP_MS) return false;
+        lastResetAt = now;
+        return resetFirestoreConnection();
+    }
+    if (!firstFailureAt) {
+        firstFailureAt = now;
+        return false;
+    }
+    if (now - firstFailureAt < RESET_AFTER_MS) return false;
+    if (now - lastResetAt < RESET_COOLDOWN_MS) return false;
+    lastResetAt = now;
+    return resetFirestoreConnection();
+}
+window.maybeResetFirestoreConnection = maybeResetFirestoreConnection;
+window.noteFirestoreSuccess = noteFirestoreSuccess;
+
+/**
+ * 幫讀取加上逾時。Firestore Lite 的讀取是一般的 fetch，沒有完整版 SDK 那個
+ * 「10 秒連不上就回報離線」的機制，萬一請求一直沒有回應，頁面會永遠停在載入中。
+ * 逾時就丟出 code 為 deadline-exceeded 的錯誤，交給呼叫端原本的重試／錯誤處理。
+ * @param {Promise} promise
+ * @param {number} ms
+ */
+function withReadTimeout(promise, ms = 20000) {
+    let timeoutId;
+    return Promise.race([
+        promise,
+        new Promise((resolve, reject) => {
+            timeoutId = setTimeout(() => {
+                const error = new Error('讀取逾時（' + ms / 1000 + ' 秒沒有回應）');
+                error.code = 'deadline-exceeded';
+                reject(error);
+            }, ms);
+        })
+    ]).finally(() => clearTimeout(timeoutId));
+}
+window.withReadTimeout = withReadTimeout;
 
 /**
  * Firebase 相關工具函數
@@ -587,10 +634,11 @@ const FirebaseUtils = {
             ? collection(db, "products")
             : query(collection(db, "products"), where("status", "==", "active"));
 
-        // 用 getDocsFromServer 強制連到伺服器查詢：連得上，不管有沒有資料都給
-        // 真實答案；連不上直接 throw，交給呼叫端的重試機制處理，不會像
-        // getDocs 那樣悄悄退回本地空快取、把「連不上」誤判成「沒有商品」
-        const productsSnapshot = await getDocsFromServer(productsQuery);
+        // 用 getDocsFromServer 強制連到伺服器查詢（Lite 的 getDocs 本來就是）：
+        // 連得上，不管有沒有資料都給真實答案；連不上直接 throw，交給呼叫端的
+        // 重試機制處理，不會把「連不上」誤判成「沒有商品」。另外加上逾時，
+        // 請求卡住時才不會永遠停在載入中
+        const productsSnapshot = await withReadTimeout(getDocsFromServer(productsQuery));
 
         if (productsSnapshot.empty) {
             return [];
@@ -610,7 +658,10 @@ const FirebaseUtils = {
                 tags: Array.isArray(data.tags) ? data.tags : [],
                 stock: data.stock || 0,
                 status: data.status || 'inactive',
-                isFeaturedOffer: data.isFeaturedOffer || false
+                isFeaturedOffer: data.isFeaturedOffer === true,
+                // 首頁沒有設定精選商品時，改用最新上架的商品，用建立時間排序
+                createdAtMs: (data.createdAt && typeof data.createdAt.toMillis === 'function')
+                    ? data.createdAt.toMillis() : 0
             };
 
             // 如果有過濾回調函數，則使用它
@@ -630,10 +681,193 @@ const FirebaseUtils = {
     }
 };
 
+/**
+ * 商品詳細介紹彈跳視窗
+ * 卡片上的描述只顯示 2 行，完整描述要點卡片或「查看詳細介紹」按鈕才看得到。
+ * 卡片資料在各頁面自己的 render 函式裡寫進 window.__productDataCache，
+ * 這裡只負責讀取、開關彈窗。頁面要有 #product-detail-modal 才會作用。
+ */
+let lastProductDetailTrigger = null;
+
+function openProductDetailModal(productId) {
+    const product = window.__productDataCache && window.__productDataCache[productId];
+    const modal = document.getElementById('product-detail-modal');
+    if (!product || !modal) return;
+
+    const isAvailable = product.status === 'active';
+
+    const image = document.getElementById('pd-image');
+    image.src = product.imageUrl || 'images/placeholder.jpg';
+    image.alt = product.name;
+    document.getElementById('pd-name').textContent = product.name;
+    document.getElementById('pd-price').textContent = `$${product.price}/${product.unit}`;
+
+    const stockEl = document.getElementById('pd-stock');
+    stockEl.textContent = !isAvailable ? '已下架' : (product.stock > 0 ? `庫存: ${product.stock} ${product.unit}` : '無庫存');
+    stockEl.classList.toggle('low-stock', isAvailable && product.stock > 0 && product.stock < 5);
+
+    document.getElementById('pd-desc').textContent = product.description || '';
+
+    const peachEl = document.getElementById('pd-peach-warning');
+    if (peachEl) peachEl.style.display = product.category === 'peach' ? 'flex' : 'none';
+
+    const tagEl = document.getElementById('pd-tag');
+    if (product.tags && product.tags.length > 0) {
+        tagEl.textContent = product.tags[0];
+        tagEl.style.display = 'inline-block';
+    } else {
+        tagEl.style.display = 'none';
+    }
+
+    document.getElementById('pd-unavailable').style.display = isAvailable ? 'none' : 'inline-block';
+
+    // 彈窗不是 .product-card，沒辦法套用「找最近的 .product-card 讀 data-*」那套邏輯，
+    // 這裡直接用 onclick 綁定，每次開窗都會用新商品的資料覆蓋掉上一次的綁定
+    const addBtn = document.getElementById('pd-add-to-cart');
+    addBtn.disabled = !isAvailable || product.stock <= 0;
+    addBtn.onclick = function() {
+        if (addBtn.disabled) return;
+        const cart = JSON.parse(localStorage.getItem('cart')) || [];
+        const existingItem = cart.find(item => item.id === product.id);
+        const currentQty = existingItem ? existingItem.quantity : 0;
+        if (currentQty >= product.stock) {
+            showToast(`庫存不足，最多可購買 ${product.stock} 份`);
+            return;
+        }
+        addToCart(product.id, product.name, product.price, 1, product.stock);
+        addBtn.classList.add('added');
+        setTimeout(() => addBtn.classList.remove('added'), 1000);
+    };
+
+    const wishBtn = document.getElementById('pd-wish-btn');
+    const wishlist = JSON.parse(localStorage.getItem('wishlist')) || [];
+    wishBtn.disabled = !isAvailable;
+    wishBtn.classList.toggle('active', wishlist.some(item => item.id === product.id));
+    wishBtn.onclick = function() {
+        const currentWishlist = JSON.parse(localStorage.getItem('wishlist')) || [];
+        const index = currentWishlist.findIndex(item => item.id === product.id);
+        if (index > -1) {
+            currentWishlist.splice(index, 1);
+            wishBtn.classList.remove('active');
+            showToast(`已取消註記 ${product.name}`);
+        } else {
+            currentWishlist.push({ id: product.id, name: product.name, addedAt: new Date().toISOString() });
+            wishBtn.classList.add('active');
+            showToast(`已註記 ${product.name}`);
+        }
+        localStorage.setItem('wishlist', JSON.stringify(currentWishlist));
+        if (typeof window.updateWishlistButtons === 'function') window.updateWishlistButtons();
+    };
+
+    modal.style.display = 'flex';
+    document.body.classList.add('modal-open-noscroll');
+
+    // 記住是從哪個元素開啟的，關閉時把焦點還回去
+    lastProductDetailTrigger = document.activeElement;
+    const closeBtn = modal.querySelector('.product-detail-close');
+    if (closeBtn) closeBtn.focus();
+}
+
+function closeProductDetailModal() {
+    const modal = document.getElementById('product-detail-modal');
+    if (modal) modal.style.display = 'none';
+    document.body.classList.remove('modal-open-noscroll');
+
+    // 卡片可能已經被重新渲染掉（換頁、篩選），確認元素還在畫面上才聚焦
+    if (lastProductDetailTrigger && document.body.contains(lastProductDetailTrigger)) {
+        lastProductDetailTrigger.focus();
+    }
+    lastProductDetailTrigger = null;
+}
+
+function initProductDetailModal() {
+    const modal = document.getElementById('product-detail-modal');
+    if (!modal || modal.dataset.bound === 'true') return;
+    modal.dataset.bound = 'true';
+
+    // 事件代理綁在 document 上，商品格子重新渲染也不用重新綁定。
+    // 卡片裡的「查看詳細介紹」是真的 <button>，鍵盤 Enter/Space 產生的 click 也會冒泡到這裡
+    document.addEventListener('click', function(e) {
+        const card = e.target.closest('.product-card');
+        if (!card || card.closest('#product-detail-modal')) return;
+        if (e.target.closest('.add-to-cart-btn, .wish-btn')) return;
+        const productId = card.dataset.productId;
+        if (productId) openProductDetailModal(productId);
+    });
+
+    const closeBtn = modal.querySelector('.product-detail-close');
+    if (closeBtn) closeBtn.addEventListener('click', closeProductDetailModal);
+
+    const backdrop = modal.querySelector('.product-detail-backdrop');
+    if (backdrop) backdrop.addEventListener('click', closeProductDetailModal);
+
+    document.addEventListener('keydown', function(e) {
+        if (modal.style.display !== 'flex') return;
+
+        if (e.key === 'Escape') {
+            closeProductDetailModal();
+            return;
+        }
+
+        // 把 Tab 鎖在彈窗裡：aria-modal 只讓讀螢幕忽略後面的內容，
+        // 用鍵盤的人還是會 Tab 到被遮住的卡片上
+        if (e.key !== 'Tab') return;
+        const focusables = modal.querySelectorAll(
+            'button:not([disabled]), [href], input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+        }
+    });
+}
+
 // 暴露公用函數到全域
+window.openProductDetailModal = openProductDetailModal;
+window.closeProductDetailModal = closeProductDetailModal;
+window.initProductDetailModal = initProductDetailModal;
 window.initCommonFeatures = initCommonFeatures;
 window.updateCartCount = updateCartCount;
 window.addToCart = addToCart;
 window.initAddToCartButtons = initAddToCartButtons;
 window.showToast = showToast;
 window.FirebaseUtils = FirebaseUtils;
+// 頁首隨捲動縮放：在頁面最上方時 Logo 和選單比較大，往下捲就縮小，
+// 留更多畫面給內容（樣式在 css/storefront.css 的 body.header-compact，只作用在桌面版）。
+// 往下超過 80px 才縮小、回到 20px 以內才放大，中間留緩衝，避免頁首高度變化
+// 讓捲動位置剛好卡在門檻上來回跳動
+(function initHeaderShrink() {
+    const COMPACT_AT = 80;
+    const EXPAND_AT = 20;
+    let ticking = false;
+
+    function update() {
+        ticking = false;
+        const y = window.scrollY || window.pageYOffset;
+        const compact = document.body.classList.contains('header-compact');
+        if (!compact && y > COMPACT_AT) {
+            document.body.classList.add('header-compact');
+        } else if (compact && y < EXPAND_AT) {
+            document.body.classList.remove('header-compact');
+        }
+    }
+
+    window.addEventListener('scroll', function() {
+        if (!ticking) {
+            ticking = true;
+            window.requestAnimationFrame(update);
+        }
+    }, { passive: true });
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', update);
+    } else {
+        update();
+    }
+})();

@@ -2,6 +2,15 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
+    <!-- firebase-warmup：讓瀏覽器一開始解析頁面就先跟 Firebase 握手、下載 SDK，
+         不用等到下面載入 Firebase 的 module 腳本才開始。版本號要跟 import 的一致。 -->
+    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-lite.js">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js">
     <link rel="icon" type="image/png" sizes="32x32" href="../images/favicon-32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="../images/favicon-16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="../images/apple-touch-icon.png">
@@ -10,27 +19,28 @@
     <meta name="description" content="杰の御果園提供台灣高山優質水果，新鮮直送到府。精選梨子、水蜜桃、蘋果及各式水果禮盒，品質保證。">
     <meta name="keywords" content="台灣水果,高山水果,新鮮水果,水果禮盒,梨子,水蜜桃,蘋果,杰の御果園,果園直送,有機水果">
     <meta name="author" content="杰の御果園">
-    
-    <link rel="stylesheet" href="../css/style.css">
-    <link rel="stylesheet" href="../css/admin-common.css">
-    <link rel="stylesheet" href="../css/shipping-settings.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+    <link rel="stylesheet" href="../css/style.css?v=20261014">
+    <link rel="stylesheet" href="../css/admin-common.css?v=20261014">
+    <link rel="stylesheet" href="../css/shipping-settings.css?v=20261014">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer">
 
     <!-- 保持原版的 Firebase 初始化方式以確保兼容性 -->
-    <script src="../js/firebase-config.js"></script>
+    <script src="../js/firebase-config.js?v=20261014"></script>
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        import { 
-          getAuth, 
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import {
+          getAuth,
           onAuthStateChanged
-        } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-        import { 
+        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import {
           initializeFirestore,
+            terminate,
           collection,
           addDoc,
           getDoc,
           getDocs,
-          getDocsFromServer,
+          getDocs as getDocsFromServer,
           doc,
           updateDoc,
           deleteDoc,
@@ -39,19 +49,21 @@
           orderBy,
           where,
           serverTimestamp
-        } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
-      
+        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-lite.js";
+
         const firebaseConfig = window.FIREBASE_CONFIG;
-        
+
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        // 自動偵測目前網路環境是否會擋掉預設的串流連線，會的話自動改用相容性更好的
-        // 長輪詢，降低連線逾時、被誤判成「查無資料」的機率
-        const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
-        
+        // 連線設定統一放在 js/firebase-config.js 的 FIRESTORE_SETTINGS（原因寫在那裡）
+        const db = initializeFirestore(app, window.FIRESTORE_SETTINGS);
+
         window.firebaseServices = {
           auth: auth,
           db: db,
+          app: app,
+          initializeFirestore,
+          terminate,
           getAuth,
           onAuthStateChanged,
           collection,
@@ -76,7 +88,7 @@
             <button class="menu-toggle" id="menu-toggle">
                 <i class="fas fa-bars"></i>
             </button>
-            
+
             <a href="../index.html" class="logo-container">
                 <img src="../images/logo.jpg" alt="杰の御果園 logo" width="492" height="649" class="logo-image">
                 <div class="logo">
@@ -84,7 +96,7 @@
                     <p>管理系統</p>
                 </div>
             </a>
-            
+
             <nav id="main-nav">
                 <ul>
                     <li><a href="dashboard.html">管理首頁</a></li>
@@ -96,7 +108,7 @@
                     <li><a href="bulletin.html">布告欄管理</a></li>
                 </ul>
             </nav>
-            
+
             <div class="header-right">
                 <div class="user-profile" id="user-profile">
                     <div class="user-name" id="user-dropdown-btn">
@@ -112,20 +124,21 @@
             </div>
         </div>
     </header>
-    
+
     <div class="menu-overlay" id="menu-overlay"></div>
-    
+
     <main>
         <div class="shipping-settings-container">
             <h1 class="admin-title">運費設定管理</h1>
-            
+            <p id="shipping-load-status" role="status" style="display: none; background: #fff8e1; border: 1px solid #ffe082; color: #6d5200; border-radius: 6px; padding: 10px 14px; margin-bottom: 16px;"></p>
+
             <!-- 免運門檻設定 -->
             <div class="settings-card">
                 <div class="card-header">
                     <i class="fas fa-gift"></i>
                     <h2>免運門檻設定</h2>
                 </div>
-                
+
                 <div class="card-body">
                     <div class="free-shipping-toggle">
                         <div class="toggle-info">
@@ -137,14 +150,14 @@
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
-                    
+
                     <div class="threshold-input-group" id="threshold-setting">
                         <label for="free-shipping-threshold">免運門檻：</label>
                         <span>NT$</span>
                         <input type="number" id="free-shipping-threshold" min="0" step="1" placeholder="1000">
                         <span>元以上免運</span>
                     </div>
-                    
+
                     <button type="button" class="btn btn-primary" id="save-free-shipping">
                         <i class="fas fa-save"></i> 儲存免運設定
                     </button>
@@ -157,7 +170,7 @@
                     <i class="fas fa-cogs"></i>
                     <h2>運費計算模式</h2>
                 </div>
-                
+
                 <div class="card-body">
                     <div class="calculation-mode-selector">
                         <label class="mode-option" for="fixed-mode">
@@ -168,7 +181,7 @@
                             </div>
                             <p class="mode-description">設定單一運費金額，不論購買任何水果種類或數量都收取相同運費</p>
                         </label>
-                        
+
                         <label class="mode-option" for="tiered-mode">
                             <input type="radio" id="tiered-mode" name="calculation-mode" value="tiered">
                             <div class="mode-header">
@@ -178,7 +191,7 @@
                             <p class="mode-description">依據購買數量累加計算運費，不同數量區間有不同價格，超出最高階梯時以餘數累加計算</p>
                         </label>
                     </div>
-                    
+
                     <button type="button" class="btn btn-primary" id="save-calculation-mode">
                         <i class="fas fa-save"></i> 儲存計算模式
                     </button>
@@ -191,7 +204,7 @@
                     <i class="fas fa-truck"></i>
                     <h2>宅配到府運費設定</h2>
                 </div>
-                
+
                 <div class="card-body">
                     <div class="delivery-methods">
                         <!-- 宅配到府 -->
@@ -270,7 +283,7 @@
                     <i class="fas fa-calculator"></i>
                     <h2>運費計算測試</h2>
                 </div>
-                
+
                 <div class="card-body">
                     <div class="test-section">
                         <div class="test-controls">
@@ -283,7 +296,7 @@
                                     </label>
                                 </div>
                             </div>
-                            
+
                             <div class="control-group">
                                 <h4>購物車模擬</h4>
                                 <div class="cart-simulation">
@@ -311,11 +324,11 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <button type="button" class="btn btn-primary" id="calculate-shipping">
                             <i class="fas fa-calculator"></i> 計算運費
                         </button>
-                        
+
                         <div class="calculation-result" id="calculation-result">
                             <h4>計算結果</h4>
                             <div class="result-summary" id="result-summary"></div>
@@ -326,7 +339,7 @@
             </div>
         </div>
     </main>
-    
+
     <footer>
         <div class="container">
             <div class="footer-content admin-footer">
@@ -334,10 +347,10 @@
             </div>
         </div>
     </footer>
-    
-    <script src="../js/member.js"></script>
-    <script src="../js/admin-common.js"></script>
-    
+
+    <script src="../js/admin-common.js?v=20261014"></script>
+    <script src="../js/shipping-calc.js?v=20261014"></script>
+
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         let freeShippingSettings = { enabled: false, threshold: 0 };
@@ -348,61 +361,30 @@
         let tieredRates = {
             home: []
         };
-        
+
         const categoryMap = {
             'pear': '梨子',
-            'persimmon': '甜柿', 
+            'persimmon': '甜柿',
             'peach': '水蜜桃',
             'apple': '蘋果',
             'gift': '禮盒',
             'featured': '特色商品'
         };
-        
-        // 計算階梯式運費的函數 - 修正階梯最大容量邏輯
+
+        // 階梯式運費試算跟前台購物車／結帳頁共用 js/shipping-calc.js，試算結果才會跟顧客實際付的一樣
         const calculateTieredShipping = function(quantity, categoryRates) {
-            if (categoryRates.length === 0) {
-                return { fee: 0, description: '未設定階梯運費' };
-            }
-            
-            // 排序階梯（按最小數量）
-            const sortedRates = categoryRates.sort((a, b) => a.minQuantity - b.minQuantity);
-            
-            let totalFee = 0;
-            let remainingQuantity = quantity;
-            let descriptions = [];
-            
-            while (remainingQuantity > 0) {
-                let handled = false;
-                
-                // 從最高階梯開始檢查，優先使用能匹配的最高階梯
-                for (let i = sortedRates.length - 1; i >= 0; i--) {
-                    const rate = sortedRates[i];
-                    
-                    if (remainingQuantity >= rate.minQuantity) {
-                        // 能使用這個階梯，盡可能使用其最大容量
-                        const useQuantity = Math.min(remainingQuantity, rate.maxQuantity);
-                        
-                        totalFee += rate.fee;
-                        descriptions.push(`${rate.minQuantity}-${rate.maxQuantity}個區間：NT$ ${rate.fee}`);
-                        remainingQuantity -= useQuantity;
-                        handled = true;
-                        break;
-                    }
-                }
-                
-                // 如果沒有任何階梯能處理剩餘數量（低於最低階梯）
-                if (!handled) {
-                    descriptions.push(`${remainingQuantity}個：數量低於最低階梯，NT$ 0`);
-                    break;
-                }
-            }
-            
-            return { 
-                fee: totalFee, 
-                description: descriptions.join('，') 
-            };
+            const result = ShippingCalc.calculateTiered(quantity, categoryRates);
+            return { fee: result.fee, description: result.descriptions.join('，') };
         };
-        
+
+        // 讀到設定之前先停用所有儲存／新增按鈕：讀取失敗時表單停在預設值（免運關閉、運費 0），
+        // 這時候按儲存會把資料庫裡真正的設定蓋掉
+        const setEditingEnabled = function(enabled) {
+            document.querySelectorAll('#save-free-shipping, #save-calculation-mode, .save-fixed-rates, .add-tier').forEach(btn => {
+                btn.disabled = !enabled;
+            });
+        };
+
         const waitForAdminCommon = function() {
             if (window.AdminCommon) {
                 checkAdminAccess();
@@ -410,7 +392,7 @@
                 setTimeout(waitForAdminCommon, 100);
             }
         };
-        
+
         const checkAdminAccess = function() {
             window.AdminCommon.checkAdminAccess(
                 function(user) {
@@ -419,9 +401,9 @@
                     if (usernameDisplay) {
                         usernameDisplay.textContent = '管理員';
                     }
-                    
-                    loadAllSettings();
+
                     bindEvents();
+                    loadAllSettings();
                 },
                 function(error) {
                     setTimeout(() => {
@@ -430,7 +412,7 @@
                 }
             );
         };
-        
+
         const bindEvents = function() {
             const freeShippingToggle = document.getElementById('enable-free-shipping');
             if (freeShippingToggle) {
@@ -443,12 +425,12 @@
                     }
                 });
             }
-            
+
             const saveFreeShippingBtn = document.getElementById('save-free-shipping');
             if (saveFreeShippingBtn) {
                 saveFreeShippingBtn.addEventListener('click', saveFreeShippingSettings);
             }
-            
+
             const modeRadios = document.querySelectorAll('input[name="calculation-mode"]');
             modeRadios.forEach(radio => {
                 radio.addEventListener('change', function() {
@@ -459,12 +441,12 @@
                     this.closest('.mode-option').classList.add('active');
                 });
             });
-            
+
             const saveModeBtn = document.getElementById('save-calculation-mode');
             if (saveModeBtn) {
                 saveModeBtn.addEventListener('click', saveCalculationMode);
             }
-            
+
             const saveFixedBtns = document.querySelectorAll('.save-fixed-rates');
             saveFixedBtns.forEach(btn => {
                 btn.addEventListener('click', function() {
@@ -472,7 +454,7 @@
                     saveFixedRates(method);
                 });
             });
-            
+
             const addTierBtns = document.querySelectorAll('.add-tier');
             addTierBtns.forEach(btn => {
                 btn.addEventListener('click', function() {
@@ -480,14 +462,14 @@
                     addTier(method);
                 });
             });
-            
+
             const addCartItemBtn = document.getElementById('add-cart-item');
             if (addCartItemBtn) {
                 addCartItemBtn.addEventListener('click', addCartItem);
             }
-            
+
             bindRemoveItemEvents();
-            
+
             const deliveryOptions = document.querySelectorAll('input[name="test-delivery-method"]');
             deliveryOptions.forEach(option => {
                 option.addEventListener('change', function() {
@@ -497,196 +479,135 @@
                     this.closest('.delivery-option').classList.add('selected');
                 });
             });
-            
+
             const calculateBtn = document.getElementById('calculate-shipping');
             if (calculateBtn) {
                 calculateBtn.addEventListener('click', calculateShipping);
             }
         };
-        
+
+        // 一次讀完所有運費設定；連線失敗會自動重試（AdminCommon.loadWithRetry），
+        // 不會在讀不到的時候顯示預設值讓管理員誤以為設定不見了
         const loadAllSettings = async function() {
-            await loadFreeShippingSettings();
-            await loadCalculationMode();
-            await loadShippingRates();
-        };
-        
-        const loadFreeShippingSettings = async function() {
-            try {
-                const db = window.firebaseServices.db;
-                const doc = window.firebaseServices.doc;
-                const getDoc = window.firebaseServices.getDoc;
-                
-                const settingsRef = doc(db, 'shippingSettings', 'freeShipping');
-                const settingsSnap = await getDoc(settingsRef);
-                
-                if (settingsSnap.exists()) {
-                    freeShippingSettings = settingsSnap.data();
-                }
-                
-                const enableCheckbox = document.getElementById('enable-free-shipping');
-                const thresholdInput = document.getElementById('free-shipping-threshold');
-                const thresholdSetting = document.getElementById('threshold-setting');
-                
-                if (enableCheckbox) enableCheckbox.checked = freeShippingSettings.enabled;
-                if (thresholdInput) thresholdInput.value = freeShippingSettings.threshold || '';
-                
-                if (freeShippingSettings.enabled && thresholdSetting) {
-                    thresholdSetting.classList.add('enabled');
-                } else if (thresholdSetting) {
-                    thresholdSetting.classList.remove('enabled');
-                }
-                
-            } catch (error) {
-                window.AdminCommon.handleError(error, '載入免運設定');
+            setEditingEnabled(false);
+            const statusEl = document.getElementById('shipping-load-status');
+            if (statusEl) {
+                statusEl.textContent = '正在載入運費設定…';
+                statusEl.style.display = 'block';
             }
-        };
-        
-        const loadCalculationMode = async function() {
+
+            let config;
             try {
-                const db = window.firebaseServices.db;
-                const doc = window.firebaseServices.doc;
-                const getDoc = window.firebaseServices.getDoc;
-                
-                const settingsRef = doc(db, 'shippingSettings', 'calculationMode');
-                const settingsSnap = await getDoc(settingsRef);
-                
-                if (settingsSnap.exists()) {
-                    calculationMode = settingsSnap.data().mode || 'fixed';
-                }
-                
-                const modeRadio = document.querySelector(`input[value="${calculationMode}"]`);
-                if (modeRadio) {
-                    modeRadio.checked = true;
-                    modeRadio.closest('.mode-option').classList.add('active');
-                }
-                updateModeDisplay();
-                
-            } catch (error) {
-                calculationMode = 'fixed';
-                const fixedRadio = document.querySelector('input[value="fixed"]');
-                if (fixedRadio) {
-                    fixedRadio.checked = true;
-                    fixedRadio.closest('.mode-option').classList.add('active');
-                }
-                updateModeDisplay();
-            }
-        };
-        
-        const loadShippingRates = async function() {
-            try {
-                const db = window.firebaseServices.db;
-                const doc = window.firebaseServices.doc;
-                const getDoc = window.firebaseServices.getDoc;
-                const collection = window.firebaseServices.collection;
-                const getDocs = window.firebaseServices.getDocs;
-                
-                const fixedRef = doc(db, 'shippingRates', 'fixedRates');
-                const [fixedSnap, tieredSnap] = await Promise.all([
-                    getDoc(fixedRef),
-                    getDocs(collection(db, 'tieredRates'))
-                ]);
-
-                if (fixedSnap.exists()) {
-                    const data = fixedSnap.data();
-                    // 處理舊格式兼容性，只保留宅配部分
-                    if (typeof data.home === 'object') {
-                        fixedRates.home = 0;
-                    } else {
-                        fixedRates.home = data.home || 0;
+                config = await window.AdminCommon.loadWithRetry(
+                    () => ShippingCalc.load(window.firebaseServices),
+                    (attempt) => {
+                        if (statusEl && attempt >= 2) statusEl.textContent = '網路連線不穩定，正在重新連線中…（設定讀到之前無法儲存）';
                     }
-                }
-
-                updateFixedRatesUI();
-
-                const homeRates = [];
-                
-                tieredSnap.forEach(doc => {
-                    const data = doc.data();
-                    if (data.method === 'home') {
-                        homeRates.push({ id: doc.id, ...data });
-                    }
-                });
-                
-                tieredRates.home = homeRates.sort((a, b) => a.minQuantity - b.minQuantity);
-                
-                updateTieredRatesUI();
-                
+                );
             } catch (error) {
                 window.AdminCommon.handleError(error, '載入運費設定');
+                if (statusEl) statusEl.textContent = '無法載入運費設定，請重新整理頁面。';
+                return;
             }
+
+            freeShippingSettings = { ...config.freeShipping };
+            calculationMode = config.calculationMode;
+            fixedRates.home = config.fixedRates.home;
+            tieredRates.home = config.tieredRates.home.slice();
+
+            const enableCheckbox = document.getElementById('enable-free-shipping');
+            const thresholdInput = document.getElementById('free-shipping-threshold');
+            const thresholdSetting = document.getElementById('threshold-setting');
+            if (enableCheckbox) enableCheckbox.checked = freeShippingSettings.enabled;
+            if (thresholdInput) thresholdInput.value = freeShippingSettings.threshold || '';
+            if (thresholdSetting) thresholdSetting.classList.toggle('enabled', freeShippingSettings.enabled);
+
+            const modeRadio = document.querySelector(`input[name="calculation-mode"][value="${calculationMode}"]`);
+            if (modeRadio) {
+                modeRadio.checked = true;
+                document.querySelectorAll('.mode-option').forEach(option => option.classList.remove('active'));
+                modeRadio.closest('.mode-option').classList.add('active');
+            }
+            updateModeDisplay();
+            updateFixedRatesUI();
+            updateTieredRatesUI();
+
+            if (statusEl) statusEl.style.display = 'none';
+            setEditingEnabled(true);
         };
-        
+
         const updateModeDisplay = function() {
             const isFixed = calculationMode === 'fixed';
-            
+
             const homeFixed = document.getElementById('home-fixed-rates');
             const homeTiered = document.getElementById('home-tiered-rates');
-            
+
             if (homeFixed) homeFixed.style.display = isFixed ? 'block' : 'none';
             if (homeTiered) homeTiered.style.display = isFixed ? 'none' : 'block';
         };
-        
+
         const updateFixedRatesUI = function() {
             const homeFixedInput = document.getElementById('home-fixed-fee');
-            
-            if (homeFixedInput) homeFixedInput.value = fixedRates.home || '';
+
+            // 0 元是合法的運費，要顯示 0，不能顯示成空白
+            if (homeFixedInput) homeFixedInput.value = Number.isFinite(fixedRates.home) ? fixedRates.home : '';
         };
-        
+
         const updateTieredRatesUI = function() {
             updateTieredList('home');
         };
-        
+
         const updateTieredList = function(method) {
             const container = document.getElementById(`${method}-tiers-list`);
             if (!container) return;
-            
+
             const rates = tieredRates[method] || [];
-            
+
             if (rates.length === 0) {
                 container.innerHTML = '<div class="empty-tiers">尚未設定階梯運費</div>';
                 return;
             }
-            
+
             let html = '';
             rates.forEach(rate => {
                 const categoryName = categoryMap[rate.category] || rate.category;
                 html += `
                     <div class="tier-item">
                         <div class="tier-info">
-                            <div class="tier-category">${categoryName}</div>
-                            <div class="tier-range">${rate.minQuantity} - ${rate.maxQuantity} 個</div>
+                            <div class="tier-category">${window.AdminCommon.escapeHtml(categoryName)}</div>
+                            <div class="tier-range">${rate.minQuantity} - ${rate.maxQuantity > 0 ? rate.maxQuantity : '不限'} 個</div>
                         </div>
                         <div class="tier-fee">NT$ ${rate.fee}</div>
-                        <button class="btn btn-danger btn-sm delete-tier" data-id="${rate.id}" data-method="${method}">
+                        <button class="btn btn-danger btn-sm delete-tier" data-id="${window.AdminCommon.escapeHtml(rate.id)}" data-method="${method}">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
                 `;
             });
-            
+
             container.innerHTML = html;
             bindTierDeleteEvents();
         };
-        
+
         const bindTierDeleteEvents = function() {
             const deleteBtns = document.querySelectorAll('.delete-tier');
             deleteBtns.forEach(btn => {
                 btn.addEventListener('click', async function() {
                     const id = this.dataset.id;
                     const method = this.dataset.method;
-                    
+
                     const confirmed = await window.AdminCommon.showConfirmDialog(
                         '確定要刪除這個階梯設定嗎？',
                         '刪除階梯'
                     );
-                    
+
                     if (confirmed) {
                         deleteTier(id, method);
                     }
                 });
             });
         };
-        
+
         const bindRemoveItemEvents = function() {
             const removeBtns = document.querySelectorAll('.remove-item');
             removeBtns.forEach(btn => {
@@ -695,143 +616,157 @@
                 });
             });
         };
-        
+
         const saveFreeShippingSettings = async function() {
             const user = window.firebaseServices.auth.currentUser;
             if (!user) {
                 window.AdminCommon.showToast('您必須登入才能保存免運設定', 'warning');
                 return;
             }
-            
+
             const enabled = document.getElementById('enable-free-shipping').checked;
-            const threshold = enabled ? parseInt(document.getElementById('free-shipping-threshold').value) || 0 : 0;
-            
+            const thresholdValue = parseInt(document.getElementById('free-shipping-threshold').value, 10);
+            if (enabled && (!Number.isFinite(thresholdValue) || thresholdValue < 0)) {
+                window.AdminCommon.showToast('請輸入免運門檻金額', 'warning');
+                return;
+            }
+            const threshold = enabled ? thresholdValue : 0;
+
             window.AdminCommon.showLoading('儲存免運設定中...');
-            
+
             try {
                 const db = window.firebaseServices.db;
-                
+
                 const settings = {
                     enabled,
                     threshold,
                     updatedAt: window.firebaseServices.serverTimestamp()
                 };
-                
+
                 const docRef = window.firebaseServices.doc(db, 'shippingSettings', 'freeShipping');
                 await window.firebaseServices.setDoc(docRef, settings);
-                
+
                 freeShippingSettings = { enabled, threshold };
                 window.AdminCommon.showToast('免運設定已儲存', 'success');
-                
+
             } catch (error) {
                 window.AdminCommon.handleError(error, '儲存免運設定');
             } finally {
                 window.AdminCommon.hideLoading();
             }
         };
-        
+
         const saveCalculationMode = async function() {
             const user = window.firebaseServices.auth.currentUser;
             if (!user) {
                 window.AdminCommon.showToast('您必須登入才能保存計算模式', 'warning');
                 return;
             }
-            
+
             const mode = document.querySelector('input[name="calculation-mode"]:checked').value;
-            
+
             window.AdminCommon.showLoading('儲存計算模式中...');
-            
+
             try {
                 const db = window.firebaseServices.db;
                 const { doc, setDoc, serverTimestamp } = window.firebaseServices;
-                
+
                 await setDoc(doc(db, 'shippingSettings', 'calculationMode'), {
                     mode: mode,
                     updatedAt: serverTimestamp()
                 });
-                
+
                 calculationMode = mode;
                 updateModeDisplay();
                 window.AdminCommon.showToast('計算模式已儲存', 'success');
-                
+
             } catch (error) {
                 window.AdminCommon.handleError(error, '儲存計算模式');
             } finally {
                 window.AdminCommon.hideLoading();
             }
         };
-        
+
         const saveFixedRates = async function(method) {
             const user = window.firebaseServices.auth.currentUser;
             if (!user) {
                 window.AdminCommon.showToast('您必須登入才能保存固定運費', 'warning');
                 return;
             }
-            
+
+            // 空白時 parseInt 是 NaN，存進資料庫會讓購物車顯示「NT$ NaN」；0 元是合法的，不能用 !fee 判斷
+            const fee = parseInt(document.getElementById(`${method}-fixed-fee`).value, 10);
+            if (!Number.isFinite(fee) || fee < 0) {
+                window.AdminCommon.showToast('請輸入運費金額（免運費請填 0）', 'warning');
+                return;
+            }
+
             window.AdminCommon.showLoading('儲存固定運費中...');
-            
+
             try {
-                const fee = parseInt(document.getElementById(`${method}-fixed-fee`).value) || 0;
-                
-                fixedRates[method] = fee;
-                
                 const db = window.firebaseServices.db;
                 const { doc, setDoc, serverTimestamp } = window.firebaseServices;
-                
+
+                // 只寫這一種配送方式的欄位並 merge：整份覆蓋的話，記憶體裡另一種配送方式
+                // 如果還是預設的 0，就會把資料庫裡真正的運費一起蓋成 0
                 await setDoc(doc(db, 'shippingRates', 'fixedRates'), {
-                    ...fixedRates,
+                    [method]: fee,
                     updatedAt: serverTimestamp()
-                });
-                
+                }, { merge: true });
+                fixedRates[method] = fee;
+
                 const methodName = method === 'home' ? '宅配' : '超商';
                 window.AdminCommon.showToast(`${methodName}固定運費已儲存`, 'success');
-                
+
             } catch (error) {
                 window.AdminCommon.handleError(error, '儲存固定運費');
             } finally {
                 window.AdminCommon.hideLoading();
             }
         };
-        
+
         const addTier = async function(method) {
             const user = window.firebaseServices.auth.currentUser;
             if (!user) {
                 window.AdminCommon.showToast('您必須登入才能新增階梯運費', 'warning');
                 return;
             }
-            
+
             const category = document.getElementById(`${method}-tier-category`).value;
-            const minQuantity = parseInt(document.getElementById(`${method}-tier-min`).value);
-            const maxQuantity = parseInt(document.getElementById(`${method}-tier-max`).value);
-            const fee = parseInt(document.getElementById(`${method}-tier-fee`).value);
-            
-            if (!category || !minQuantity || !maxQuantity || fee === undefined) {
-                window.AdminCommon.showToast('請填寫完整的階梯資料', 'warning');
+            const minQuantity = parseInt(document.getElementById(`${method}-tier-min`).value, 10);
+            const maxQuantity = parseInt(document.getElementById(`${method}-tier-max`).value, 10);
+            const fee = parseInt(document.getElementById(`${method}-tier-fee`).value, 10);
+
+            // parseInt 空白是 NaN，`fee === undefined` 永遠擋不住；運費 0 元是合法的，不能用 !fee
+            if (!category || !Number.isFinite(minQuantity) || minQuantity < 1 ||
+                !Number.isFinite(maxQuantity) || maxQuantity < 1 ||
+                !Number.isFinite(fee) || fee < 0) {
+                window.AdminCommon.showToast('請填寫完整的階梯資料（數量至少 1，運費不可空白）', 'warning');
                 return;
             }
-            
+
             if (maxQuantity < minQuantity) {
                 window.AdminCommon.showToast('最大數量不能小於最小數量', 'error');
                 return;
             }
-            
+
             const existing = tieredRates[method] || [];
             const overlapping = existing.some(rate => {
-                return rate.category === category && 
+                return rate.category === category &&
                        !(maxQuantity < rate.minQuantity || minQuantity > rate.maxQuantity);
             });
-            
+
             if (overlapping) {
                 window.AdminCommon.showToast('此數量區間與現有階梯重疊', 'error');
                 return;
             }
-            
+
             window.AdminCommon.showLoading('新增階梯中...');
-            
+
             try {
                 const db = window.firebaseServices.db;
                 const { collection, addDoc, serverTimestamp } = window.firebaseServices;
-                
+
                 const tierData = {
                     method,
                     category,
@@ -840,52 +775,52 @@
                     fee,
                     createdAt: serverTimestamp()
                 };
-                
+
                 const docRef = await addDoc(collection(db, 'tieredRates'), tierData);
-                
+
                 tierData.id = docRef.id;
                 tieredRates[method].push(tierData);
                 tieredRates[method].sort((a, b) => a.minQuantity - b.minQuantity);
-                
+
                 document.getElementById(`${method}-tier-category`).value = '';
                 document.getElementById(`${method}-tier-min`).value = '';
                 document.getElementById(`${method}-tier-max`).value = '';
                 document.getElementById(`${method}-tier-fee`).value = '';
-                
+
                 window.AdminCommon.showToast('階梯已新增', 'success');
                 updateTieredList(method);
-                
+
             } catch (error) {
                 window.AdminCommon.handleError(error, '新增階梯');
             } finally {
                 window.AdminCommon.hideLoading();
             }
         };
-        
+
         const deleteTier = async function(id, method) {
             window.AdminCommon.showLoading('刪除階梯中...');
             try {
                 const db = window.firebaseServices.db;
                 const { doc, deleteDoc } = window.firebaseServices;
-                
+
                 await deleteDoc(doc(db, 'tieredRates', id));
-                
+
                 tieredRates[method] = tieredRates[method].filter(rate => rate.id !== id);
-                
+
                 window.AdminCommon.showToast('階梯設定已刪除', 'success');
                 updateTieredList(method);
-                
+
             } catch (error) {
                 window.AdminCommon.handleError(error, '刪除階梯');
             } finally {
                 window.AdminCommon.hideLoading();
             }
         };
-        
+
         const addCartItem = function() {
             const cartItems = document.getElementById('cart-items');
             if (!cartItems) return;
-            
+
             const newItem = document.createElement('div');
             newItem.className = 'cart-item';
             newItem.innerHTML = `
@@ -904,27 +839,27 @@
                     <i class="fas fa-trash"></i>
                 </button>
             `;
-            
+
             cartItems.appendChild(newItem);
             bindRemoveItemEvents();
         };
-        
+
         const calculateShipping = function() {
             const deliveryMethod = 'home'; // 只有宅配到府
             const cartItems = document.querySelectorAll('.cart-item');
-            
+
             let totalAmount = 0;
             let cartData = [];
-            
+
             cartItems.forEach(item => {
                 const category = item.querySelector('.item-category').value;
                 const quantity = parseInt(item.querySelector('.item-quantity').value);
                 const price = parseInt(item.querySelector('.item-price').value) || 0;
-                
+
                 if (category && quantity) {
                     const itemTotal = quantity * price;
                     totalAmount += itemTotal;
-                    
+
                     cartData.push({
                         category,
                         quantity,
@@ -933,12 +868,12 @@
                     });
                 }
             });
-            
+
             if (cartData.length === 0) {
                 window.AdminCommon.showToast('請至少新增一個商品項目', 'warning');
                 return;
             }
-            
+
             // 如果有填入單價且達到免運門檻
             if (freeShippingSettings.enabled && totalAmount > 0 && totalAmount >= freeShippingSettings.threshold) {
                 showCalculationResult({
@@ -950,46 +885,46 @@
                 });
                 return;
             }
-            
+
             let shippingFee = 0;
             let details = [];
-            
+
             if (calculationMode === 'fixed') {
                 // 固定運費計算 - 簡化版本
                 const fixedFee = fixedRates[deliveryMethod] || 0;
-                
+
                 if (cartData.length > 0) {
                     shippingFee = fixedFee;
                     details.push(`固定運費：NT$ ${fixedFee}`);
                 }
-                
+
             } else {
                 // 階梯式運費計算
                 const rates = tieredRates[deliveryMethod];
                 const categoryTotals = {};
-                
+
                 cartData.forEach(item => {
                     if (!categoryTotals[item.category]) {
                         categoryTotals[item.category] = 0;
                     }
                     categoryTotals[item.category] += item.quantity;
                 });
-                
+
                 Object.keys(categoryTotals).forEach(category => {
                     const quantity = categoryTotals[category];
                     const categoryRates = rates.filter(r => r.category === category);
-                    
+
                     if (categoryRates.length === 0) {
                         details.push(`${categoryMap[category]} ${quantity}個：未設定階梯運費，NT$ 0`);
                         return;
                     }
-                    
+
                     const result = calculateTieredShipping(quantity, categoryRates);
                     shippingFee += result.fee;
                     details.push(`${categoryMap[category]} ${quantity}個：${result.description}`);
                 });
             }
-            
+
             showCalculationResult({
                 shippingFee,
                 totalAmount,
@@ -998,18 +933,18 @@
                 details: details.join('<br>')
             });
         };
-        
+
         const showCalculationResult = function(result) {
             const resultContainer = document.getElementById('calculation-result');
             const resultSummary = document.getElementById('result-summary');
             const resultDetails = document.getElementById('result-details');
-            
+
             if (!resultContainer || !resultSummary || !resultDetails) return;
-            
+
             const deliveryMethod = 'home';
             const methodName = '宅配到府';
             const modeName = calculationMode === 'fixed' ? '固定運費' : '階梯式運費';
-            
+
             if (result.isFreeShipping) {
                 resultSummary.innerHTML = `
                     <strong>🎉 符合免運條件！</strong><br>
@@ -1024,7 +959,7 @@
                     <strong>💰 運費計算結果</strong><br>
                     配送方式：${methodName}（${modeName}）<br>
                 `;
-                
+
                 if (result.hasPrice) {
                     summaryHTML += `
                         商品總金額：NT$ ${result.totalAmount.toLocaleString()}<br>
@@ -1038,22 +973,22 @@
                         訂單總額：運費 + 未知商品金額
                     `;
                 }
-                
+
                 resultSummary.innerHTML = summaryHTML;
                 resultDetails.innerHTML = `
                     <strong>運費明細：</strong><br>
                     ${result.details || '無明細'}
                 `;
             }
-            
+
             resultContainer.style.display = 'block';
-            
+
             resultContainer.scrollIntoView({
                 behavior: 'smooth',
                 block: 'nearest'
             });
         };
-        
+
         waitForAdminCommon();
     });
     </script>

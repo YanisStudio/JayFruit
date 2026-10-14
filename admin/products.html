@@ -2,6 +2,15 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
+    <!-- firebase-warmup：讓瀏覽器一開始解析頁面就先跟 Firebase 握手、下載 SDK，
+         不用等到下面載入 Firebase 的 module 腳本才開始。版本號要跟 import 的一致。 -->
+    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-lite.js">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js">
     <link rel="icon" type="image/png" sizes="32x32" href="../images/favicon-32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="../images/favicon-16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="../images/apple-touch-icon.png">
@@ -10,27 +19,28 @@
     <meta name="description" content="杰の御果園提供台灣高山優質水果，新鮮直送到府。精選梨子、水蜜桃、蘋果及各式水果禮盒，品質保證。">
     <meta name="keywords" content="台灣水果,高山水果,新鮮水果,水果禮盒,梨子,水蜜桃,蘋果,杰の御果園,果園直送,有機水果">
     <meta name="author" content="杰の御果園">
-    
-    <link rel="stylesheet" href="../css/style.css">
-    <link rel="stylesheet" href="../css/admin-common.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    
+
+    <link rel="stylesheet" href="../css/style.css?v=20261014">
+    <link rel="stylesheet" href="../css/admin-common.css?v=20261014">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer">
+
     <!-- Firebase SDK 引入 - 使用模組方式 -->
-    <script src="../js/firebase-config.js"></script>
+    <script src="../js/firebase-config.js?v=20261014"></script>
     <script type="module">
         // 導入Firebase所需模組
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        import { 
-            getAuth, 
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import {
+            getAuth,
             onAuthStateChanged
-        } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-        import { 
-            initializeFirestore, 
-            collection, 
+        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import {
+            initializeFirestore,
+            terminate,
+            collection,
             addDoc,
             getDoc,
             getDocs,
-            getDocsFromServer,
+            getDocs as getDocsFromServer,
             doc,
             updateDoc,
             deleteDoc,
@@ -40,29 +50,31 @@
             serverTimestamp,
             writeBatch,
             deleteField
-        } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-lite.js";
         import {
             getStorage,
             ref,
             uploadBytes,
             getDownloadURL
-        } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js";
-        
+        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+
         // Firebase配置 - 統一使用水果店的配置
         const firebaseConfig = window.FIREBASE_CONFIG;
-        
+
         // 初始化Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        // 自動偵測目前網路環境是否會擋掉預設的串流連線，會的話自動改用相容性更好的
-        // 長輪詢，降低連線逾時、被誤判成「查無資料」的機率
-        const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
+        // 連線設定統一放在 js/firebase-config.js 的 FIRESTORE_SETTINGS（原因寫在那裡）
+        const db = initializeFirestore(app, window.FIRESTORE_SETTINGS);
         const storage = getStorage(app);
-        
+
         // 將Firebase服務暴露給全局使用
         window.firebaseServices = {
             auth: auth,
             db: db,
+            app: app,
+            initializeFirestore,
+            terminate,
             storage: storage,
             getAuth,
             onAuthStateChanged,
@@ -85,13 +97,13 @@
             getDownloadURL
         };
     </script>
-    
+
     <style>
         /* 商品管理特定樣式 */
         .product-management-container {
             padding: 20px;
         }
-        
+
         .product-form-container {
             background-color: #fff;
             padding: 20px;
@@ -99,30 +111,30 @@
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             margin-bottom: 30px;
         }
-        
+
         .form-row {
             display: flex;
             flex-wrap: wrap;
             margin-bottom: 15px;
         }
-        
+
         .form-group {
             flex: 1;
             min-width: 250px;
             margin-right: 15px;
             margin-bottom: 15px;
         }
-        
+
         .form-group:last-child {
             margin-right: 0;
         }
-        
+
         .form-group label {
             display: block;
             margin-bottom: 5px;
             font-weight: 500;
         }
-        
+
         .form-group input,
         .form-group select,
         .form-group textarea {
@@ -132,12 +144,12 @@
             border-radius: 4px;
             font-size: 15px;
         }
-        
+
         .form-group textarea {
             min-height: 100px;
             resize: vertical;
         }
-        
+
         .image-preview {
             width: 100px;
             height: 100px;
@@ -150,27 +162,27 @@
             align-items: center;
             justify-content: center;
         }
-        
+
         .image-preview img {
             max-width: 100%;
             max-height: 100%;
             object-fit: cover;
         }
-        
+
         .action-buttons {
             display: flex;
             gap: 10px;
             margin-top: 20px;
         }
-        
+
         .action-buttons button {
             padding: 10px 20px;
         }
-        
+
         .product-table-container {
             overflow-x: auto;
         }
-        
+
         .product-table th:nth-child(1),
         .product-table td:nth-child(1) {
             width: 36px;
@@ -247,14 +259,14 @@
             object-fit: cover;
             border-radius: 4px;
         }
-        
+
         .product-tag-container {
             display: flex;
             flex-wrap: wrap;
             gap: 5px;
             margin-top: 10px;
         }
-        
+
         .product-tag {
             background-color: #f0f0f0;
             padding: 3px 8px;
@@ -262,27 +274,27 @@
             font-size: 12px;
             margin-right: 5px;
         }
-        
+
         .product-tag.featured {
             background-color: #ffeb3b;
             color: #333;
         }
-        
+
         .product-tag.sale {
             background-color: #ff5722;
             color: white;
         }
-        
+
         .product-tag.new {
             background-color: #4caf50;
             color: white;
         }
-        
+
         .product-tag.organic {
             background-color: #8bc34a;
             color: white;
         }
-        
+
         .loading-overlay {
             position: fixed;
             top: 0;
@@ -298,12 +310,12 @@
             opacity: 0;
             transition: visibility 0s, opacity 0.3s;
         }
-        
+
         .loading-overlay.active {
             visibility: visible;
             opacity: 1;
         }
-        
+
         .spinner {
             border: 5px solid #f3f3f3;
             border-top: 5px solid #4caf50;
@@ -312,12 +324,12 @@
             height: 50px;
             animation: spin 1s linear infinite;
         }
-        
+
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        
+
         .status-dot {
             display: inline-block;
             width: 10px;
@@ -325,15 +337,15 @@
             border-radius: 50%;
             margin-right: 5px;
         }
-        
+
         .status-dot.active {
             background-color: #4caf50;
         }
-        
+
         .status-dot.inactive {
             background-color: #f44336;
         }
-        
+
         /* 確認刪除對話框 */
         .confirm-dialog {
             position: fixed;
@@ -350,12 +362,12 @@
             opacity: 0;
             transition: visibility 0s, opacity 0.3s;
         }
-        
+
         .confirm-dialog.active {
             visibility: visible;
             opacity: 1;
         }
-        
+
         .confirm-dialog-content {
             background: white;
             padding: 20px;
@@ -363,14 +375,14 @@
             max-width: 400px;
             text-align: center;
         }
-        
+
         .confirm-dialog-buttons {
             display: flex;
             justify-content: center;
             gap: 10px;
             margin-top: 20px;
         }
-        
+
         .tags-input-container {
             border: 1px solid #ddd;
             border-radius: 4px;
@@ -380,7 +392,7 @@
             flex-wrap: wrap;
             align-items: center;
         }
-        
+
         .tags-input-container span {
             background-color: #f0f0f0;
             padding: 3px 8px;
@@ -389,13 +401,13 @@
             display: flex;
             align-items: center;
         }
-        
+
         .tags-input-container span i {
             margin-left: 5px;
             cursor: pointer;
             font-size: 12px;
         }
-        
+
         .tags-input-container input {
             border: none;
             outline: none;
@@ -421,29 +433,29 @@
             margin: 0 2px;
             transition: all 0.2s ease;
         }
-        
+
         .product-action-btn:hover {
             transform: translateY(-1px);
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        
+
         .product-edit-btn {
             background-color: #17a2b8;
             border-color: #17a2b8;
             color: white;
         }
-        
+
         .product-edit-btn:hover {
             background-color: #138496;
             border-color: #138496;
         }
-        
+
         .product-delete-btn {
             background-color: #dc3545;
             border-color: #dc3545;
             color: white;
         }
-        
+
         .product-delete-btn:hover {
             background-color: #c82333;
             border-color: #c82333;
@@ -453,7 +465,7 @@
         .product-table td:last-child {
             min-width: 160px;
         }
-        
+
         .product-action-buttons-group {
             display: flex;
             flex-wrap: wrap;
@@ -467,11 +479,11 @@
                 display: block !important;
                 cursor: pointer;
             }
-            
+
             #main-nav {
                 display: none;
             }
-            
+
             #main-nav.active {
                 display: block;
                 position: absolute;
@@ -481,11 +493,11 @@
                 background-color: white;
                 z-index: 1000;
             }
-            
+
             .menu-overlay.active {
                 display: block;
             }
-            
+
             body.menu-open {
                 overflow: hidden;
             }
@@ -535,7 +547,7 @@
             <button class="menu-toggle" id="menu-toggle">
                 <i class="fas fa-bars"></i>
             </button>
-            
+
             <!-- Logo 區域 - 更新為水果店品牌 -->
             <a href="../index.html" class="logo-container">
                 <img src="../images/logo.jpg" alt="杰の御果園 logo" width="492" height="649" class="logo-image">
@@ -544,7 +556,7 @@
                     <p>管理系統</p>
                 </div>
             </a>
-            
+
             <!-- 導航選單 -->
             <nav id="main-nav">
                 <ul>
@@ -557,7 +569,7 @@
                     <li><a href="bulletin.html">布告欄管理</a></li>
                 </ul>
             </nav>
-            
+
             <!-- 桌面版右側元素 -->
             <div class="header-right">
                 <!-- 用戶資訊 -->
@@ -575,14 +587,14 @@
             </div>
         </div>
     </header>
-    
+
     <!-- 半透明背景覆蓋 (用於手機版選單) -->
     <div class="menu-overlay" id="menu-overlay"></div>
-    
+
     <main>
         <div class="admin-container">
             <h1 class="admin-title">商品管理</h1>
-            
+
             <!-- 商品表單 -->
             <div class="admin-card product-form-container">
                 <div class="card-header">
@@ -591,7 +603,7 @@
                 <form id="product-form">
                     <!-- 隱藏的商品ID字段，用於編輯功能 -->
                     <input type="hidden" id="product-id">
-                    
+
                     <div class="form-row">
                         <div class="form-group">
                             <label for="product-name">商品名稱</label>
@@ -610,7 +622,7 @@
                             </select>
                         </div>
                     </div>
-                    
+
                     <div class="form-row">
                         <div class="form-group">
                             <label for="product-price">商品價格</label>
@@ -629,7 +641,7 @@
                             </select>
                         </div>
                     </div>
-                    
+
                     <div class="form-row">
                         <div class="form-group">
                             <label for="product-stock">庫存數量</label>
@@ -643,12 +655,19 @@
                             </select>
                         </div>
                     </div>
-                    
+
+                    <div class="form-group">
+                        <label for="product-featured" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="product-featured" style="width: auto; margin: 0;">
+                            顯示在首頁「精選水果」
+                        </label>
+                        <small>沒有任何商品勾選時，首頁會自動顯示最新上架的 8 項商品</small>
+                    </div>
                     <div class="form-group">
                         <label for="product-description">商品描述</label>
                         <textarea id="product-description" required></textarea>
                     </div>
-                    
+
                     <div class="form-row">
                         <div class="form-group">
                             <label for="product-image">商品圖片</label>
@@ -665,14 +684,14 @@
                             <small>建議標籤：新鮮、當季、限量、產地直送、有機、高山</small>
                         </div>
                     </div>
-                    
+
                     <div class="action-buttons">
                         <button type="submit" class="btn btn-primary" id="save-product">儲存商品</button>
                         <button type="button" class="btn btn-secondary" id="cancel-edit">取消</button>
                     </div>
                 </form>
             </div>
-            
+
             <!-- 商品列表 -->
             <div class="admin-card">
                 <div class="card-header">
@@ -744,12 +763,12 @@
             </div>
         </div>
     </main>
-    
+
     <!-- 加載指示器 -->
     <div class="loading-overlay" id="loading-overlay">
         <div class="spinner"></div>
     </div>
-    
+
     <!-- 確認刪除對話框 -->
     <div class="confirm-dialog" id="confirm-dialog">
         <div class="confirm-dialog-content">
@@ -761,7 +780,7 @@
             </div>
         </div>
     </div>
-    
+
     <footer>
         <div class="container">
             <div class="footer-content admin-footer">
@@ -769,9 +788,9 @@
             </div>
         </div>
     </footer>
-    
-    <script src="../js/member.js"></script>
-    <script src="../js/admin-common.js"></script>
+
+    <script src="../js/image-upload.js?v=20261014"></script>
+    <script src="../js/admin-common.js?v=20261014"></script>
     <script>
     // 等待DOM完全加載後執行
     document.addEventListener('DOMContentLoaded', function() {
@@ -786,7 +805,7 @@
                 setTimeout(waitForAdminCommon, 100);
             }
         };
-        
+
         // 初始化儀表板
         const initializeDashboard = function() {
             // 使用 AdminCommon 檢查管理員權限
@@ -794,13 +813,13 @@
                 function(user) {
                     // 成功回調
                     console.log('管理員已登入');
-                    
+
                     // 设置用户名显示 - 显示"管理员"而不是邮箱
                     const usernameDisplay = document.getElementById('username-display');
                     if (usernameDisplay) {
                         usernameDisplay.textContent = '管理員';
                     }
-                    
+
                     // 初始化商品管理頁面
                     initProductManagement();
                 },
@@ -813,12 +832,12 @@
                 }
             );
         };
-        
+
         // 初始化商品管理功能
         const initProductManagement = function() {
             // 檢查 Firestore 權限
             console.log('檢查 Firestore 服務狀態:', window.firebaseServices.db ? '已初始化' : '未初始化');
-            
+
             // 獲取商品列表
             loadProducts();
 
@@ -830,7 +849,7 @@
                     saveProduct();
                 });
             }
-            
+
             // 綁定取消編輯按鈕
             const cancelEditBtn = document.getElementById('cancel-edit');
             if (cancelEditBtn) {
@@ -838,7 +857,7 @@
                     resetForm();
                 });
             }
-            
+
             // 綁定刷新商品列表按鈕
             const refreshBtn = document.getElementById('refresh-products');
             if (refreshBtn) {
@@ -846,7 +865,7 @@
                     loadProducts();
                 });
             }
-            
+
             // 綁定確認刪除按鈕
             const confirmDeleteBtn = document.getElementById('confirm-delete');
             if (confirmDeleteBtn) {
@@ -858,7 +877,7 @@
                     hideConfirmDialog();
                 });
             }
-            
+
             // 綁定取消刪除按鈕
             const cancelDeleteBtn = document.getElementById('cancel-delete');
             if (cancelDeleteBtn) {
@@ -919,7 +938,7 @@
                     }
                 });
             }
-            
+
             // 初始化標籤輸入功能
             const tagInput = document.getElementById('tag-input');
             if (tagInput) {
@@ -934,6 +953,13 @@
                     }
                 });
             }
+        };
+
+        // 商品沒有上傳圖片時存的是前台用的相對路徑 images/placeholder.jpg，
+        // 後台頁面在 /admin/ 底下，要往上一層才找得到
+        const adminImageSrc = function(url) {
+            if (!url) return '../images/placeholder.jpg';
+            return /^images\//.test(url) ? '../' + url : url;
         };
 
         // 加載商品列表
@@ -967,7 +993,7 @@
                     // 不會像 getDocs 那樣悄悄退回本地空快取、被誤判成「沒有商品」
                     const productsSnapshot = await getDocsFromServer(productsQuery);
                     console.log('查詢完成，找到商品數量:', productsSnapshot.size);
-                    
+
                     const productListElement = document.getElementById('product-list');
                     if (productListElement) {
                         if (productsSnapshot.empty) {
@@ -979,17 +1005,17 @@
                             console.log('商品列表為空');
                         } else {
                             let productsHTML = '';
-                            
+
                             productsSnapshot.forEach(doc => {
                                 const product = doc.data();
                                 const productId = doc.id;
-                                
+
                                 console.log('加載商品:', productId, product.name);
-                                
+
                                 // 根據狀態設置樣式
                                 const statusDotClass = product.status === 'active' ? 'active' : 'inactive';
                                 const statusText = product.status === 'active' ? '上架中' : '已下架';
-                                
+
                                 // 格式化分類顯示
                                 let categoryText = '其他';
                                 switch(product.category) {
@@ -1000,19 +1026,19 @@
                                     case 'gift': categoryText = '禮盒'; break;
                                     case 'featured': categoryText = '特色商品'; break;
                                 }
-                                
+
                                 productsHTML += `
                                     <tr>
                                         <td><input type="checkbox" class="product-select-checkbox" data-id="${productId}"></td>
                                         <td>
-                                            <img src="${product.imageUrl || 'images/placeholder.jpg'}" alt="${window.AdminCommon.escapeHtml(product.name)}" class="product-thumbnail" onerror="this.onerror=null; this.src='images/placeholder.jpg';">
+                                            <img src="${window.AdminCommon.escapeHtml(adminImageSrc(product.imageUrl))}" alt="${window.AdminCommon.escapeHtml(product.name)}" class="product-thumbnail" onerror="this.onerror=null; this.src='../images/placeholder.jpg';">
                                         </td>
                                         <td>
-                                            ${window.AdminCommon.escapeHtml(product.name)}
+                                            ${product.isFeaturedOffer === true ? '<i class="fas fa-star" style="color: #f9a825;" title="首頁精選"></i> ' : ''}${window.AdminCommon.escapeHtml(product.name)}
                                             <span class="product-id-hint">ID: ${productId.substring(0, 6)}...</span>
                                         </td>
                                         <td>${categoryText}</td>
-                                        <td>${product.price} / ${product.unit}</td>
+                                        <td>${product.price} / ${window.AdminCommon.escapeHtml(product.unit)}</td>
                                         <td>${product.stock}</td>
                                         <td>
                                             <span class="status-dot ${statusDotClass}"></span>
@@ -1032,10 +1058,10 @@
                                     </tr>
                                 `;
                             });
-                            
+
                             productListElement.innerHTML = productsHTML;
                             console.log('商品列表渲染完成');
-                            
+
                             // 綁定編輯按鈕事件
                             const editButtons = document.querySelectorAll('.product-edit-btn');
                             editButtons.forEach(button => {
@@ -1044,7 +1070,7 @@
                                     editProduct(productId);
                                 });
                             });
-                            
+
                             // 綁定刪除按鈕事件
                             const deleteButtons = document.querySelectorAll('.product-delete-btn');
                             deleteButtons.forEach(button => {
@@ -1053,7 +1079,7 @@
                                     showConfirmDialog(productId);
                                 });
                             });
-                            
+
                             // 綁定商品勾選事件（批次排程用）
                             bindProductSelectionEvents();
                         }
@@ -1260,23 +1286,23 @@
                 const db = window.firebaseServices.db;
                 const doc = window.firebaseServices.doc;
                 const getDoc = window.firebaseServices.getDoc;
-                
+
                 console.log('開始編輯商品，ID:', productId);
-                
+
                 // 獲取商品資料
                 const productRef = doc(db, "products", productId);
                 const productSnap = await getDoc(productRef);
-                
+
                 if (productSnap.exists()) {
                     const product = productSnap.data();
                     console.log('獲取到商品資料:', product);
-                    
+
                     // 更新表單標題
                     const formTitle = document.getElementById('form-title');
                     if (formTitle) {
                         formTitle.textContent = '編輯商品';
                     }
-                    
+
                     // 填充表單數據
                     document.getElementById('product-id').value = productId;
                     document.getElementById('product-name').value = product.name || '';
@@ -1286,32 +1312,29 @@
                     document.getElementById('product-stock').value = product.stock || 0;
                     document.getElementById('product-status').value = product.status || 'active';
                     document.getElementById('product-description').value = product.description || '';
-                    
+                    document.getElementById('product-featured').checked = product.isFeaturedOffer === true;
+
                     // 清除標籤
                     const tagsContainer = document.getElementById('tags-container');
                     const tagInput = document.getElementById('tag-input');
-                    
+
                     // 保留標籤輸入框
                     tagsContainer.innerHTML = '';
                     tagsContainer.appendChild(tagInput);
-                    
+
                     // 添加產品標籤
                     if (product.tags && Array.isArray(product.tags)) {
                         product.tags.forEach(tag => {
                             addTag(tag);
                         });
                     }
-                    
+
                     // 更新圖片預覽
                     const previewImg = document.getElementById('preview-img');
-                    if (previewImg && product.imageUrl) {
-                        previewImg.src = product.imageUrl;
-                        console.log('設置圖片預覽:', product.imageUrl);
-                    } else if (previewImg) {
-                        previewImg.src = 'images/placeholder.jpg';
-                        console.log('使用預設圖片預覽');
+                    if (previewImg) {
+                        previewImg.src = adminImageSrc(product.imageUrl);
                     }
-                    
+
                     // 捲動到表單區域
                     document.querySelector('.product-form-container').scrollIntoView({
                         behavior: 'smooth'
@@ -1328,7 +1351,7 @@
                 hideLoading();
             }
         };
-        
+
         // 保存商品
         const saveProduct = async function() {
             showLoading();
@@ -1343,43 +1366,51 @@
                 const storage = window.firebaseServices.storage;
                 const storageRef = window.firebaseServices.storageRef;
                 const uploadBytes = window.firebaseServices.uploadBytes;
-                
+
                 // 檢查用戶登入狀態
                 const user = window.firebaseServices.auth.currentUser;
                 console.log('用戶登入狀態:', user ? '已登入' : '未登入');
-                
+
                 if (!user) {
                     console.warn('用戶未登入，無法儲存商品');
                     alert('您必須登入才能保存商品資料');
                     hideLoading();
                     return;
                 }
-                
+
                 // 獲取表單數據
                 const productId = document.getElementById('product-id').value;
                 const name = document.getElementById('product-name').value;
                 const category = document.getElementById('product-category').value;
                 const price = parseFloat(document.getElementById('product-price').value);
                 const unit = document.getElementById('product-unit').value;
-                const stock = parseInt(document.getElementById('product-stock').value);
+                const stock = parseInt(document.getElementById('product-stock').value, 10);
+                const isFeaturedOffer = document.getElementById('product-featured').checked;
+
+                // 價格、庫存是空白或不是數字時不要存（NaN 存進去，前台會顯示 NT$ NaN、無法結帳）
+                if (!Number.isFinite(price) || price < 0 || !Number.isFinite(stock) || stock < 0) {
+                    alert('請填寫正確的價格與庫存數量');
+                    hideLoading();
+                    return;
+                }
                 const status = document.getElementById('product-status').value;
                 const description = document.getElementById('product-description').value;
                 const tagElements = document.querySelectorAll('#tags-container span');
                 const tags = Array.from(tagElements).map(span => span.textContent.trim());
-                
+
                 console.log('收集商品資料:', { productId, name, category, price, unit, stock, status });
-                
+
                 // 圖片檔案
                 const imageFile = document.getElementById('product-image').files[0];
-                
+
                 // 預設圖片 URL：images/pear.jpg、persimmon.jpg 等分類專屬預設圖檔案
                 // 實際上並不存在於 images/ 資料夾，商品若沒有另外上傳圖片，
                 // 一律使用確實存在的 placeholder.jpg，避免後台編輯預覽與前台商品圖破圖
                 const defaultImageUrl = 'images/placeholder.jpg';
-                
+
                 // 決定初始圖片 URL (編輯模式可能使用現有圖片)
                 let initialImageUrl = defaultImageUrl;
-                
+
                 // 如果是編輯模式，檢查是否已有圖片
                 if (productId) {
                     const previewSrc = document.getElementById('preview-img').src;
@@ -1388,7 +1419,7 @@
                         console.log('使用現有圖片 URL:', initialImageUrl);
                     }
                 }
-                
+
                 // 首先，使用預設或現有圖片建立基本商品資料
                 const productData = {
                     name,
@@ -1399,17 +1430,18 @@
                     status,
                     description,
                     tags,
+                    isFeaturedOffer,
                     imageUrl: initialImageUrl,
                     updatedAt: serverTimestamp()
                 };
-                
+
                 // 保存商品基本資料到 Firestore
                 let savedProductId = productId;
                 let saveSuccess = false;
-                
+
                 try {
                     console.log('開始保存商品基本資料...');
-                    
+
                     if (productId) {
                         // 更新現有商品
                         const productRef = doc(db, "products", productId);
@@ -1424,7 +1456,7 @@
                         console.log('商品基本資料新增成功，ID:', savedProductId);
                         saveSuccess = true;
                     }
-                    
+
                     // 第一階段通知用戶資料已保存
                     if (saveSuccess) {
                         if (imageFile) {
@@ -1441,35 +1473,41 @@
                     hideLoading();
                     return; // 終止處理
                 }
-                
+
                 // 如果有選擇新圖片且基本資料保存成功，嘗試上傳圖片
                 if (imageFile && saveSuccess && savedProductId) {
                     console.log('開始處理圖片上傳...');
-                    
+
                     try {
+                        // 上傳前先在瀏覽器縮圖壓縮：手機照片原檔常常好幾 MB，
+                        // 會拖慢首頁與商品頁每一位訪客的載入速度
+                        const uploadFile = window.ImageUpload
+                            ? await window.ImageUpload.compress(imageFile, { maxDimension: 1200, quality: 0.82 })
+                            : imageFile;
+
                         // 創建存儲引用
                         const timestamp = Date.now();
-                        const imagePath = `products/${category}/${timestamp}_${imageFile.name}`;
+                        const imagePath = `products/${category}/${timestamp}_${uploadFile.name}`;
                         const imageRef = storageRef(storage, imagePath);
-                        
+
                         console.log('上傳圖片到路徑:', imagePath);
-                        
-                        // 上傳圖片
-                        await uploadBytes(imageRef, imageFile);
+
+                        // 上傳圖片（檔名帶時間戳記、內容不會再變，可以讓瀏覽器長期快取）
+                        await uploadBytes(imageRef, uploadFile, window.ImageUpload ? window.ImageUpload.metadataFor(uploadFile) : undefined);
                         console.log('圖片上傳成功');
-                        
+
                         // 直接構造 URL 而不是使用 getDownloadURL
                         console.log('直接構造圖片 URL...');
                         const bucketName = "jayfruit-9dfab.firebasestorage.app";
                         const encodedPath = encodeURIComponent(imagePath);
                         const directURL = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedPath}?alt=media`;
                         console.log('構造的 URL:', directURL);
-                        
+
                         // 更新商品記錄的圖片 URL
                         const productRef = doc(db, "products", savedProductId);
                         await updateDoc(productRef, { imageUrl: directURL });
                         console.log('商品圖片 URL 更新成功');
-                        
+
                         // 通知用戶圖片處理完成
                         alert('圖片上傳成功！商品資料已更新。');
                     } catch (imageError) {
@@ -1477,7 +1515,7 @@
                         alert('商品基本資料已保存，但圖片上傳失敗。商品將使用預設圖片。');
                     }
                 }
-                
+
                 // 重置表單並刷新列表
                 resetForm();
                 loadProducts();
@@ -1488,7 +1526,7 @@
                 hideLoading();
             }
         };
-        
+
         // 刪除商品
         const deleteProduct = async function(productId) {
             showLoading();
@@ -1496,9 +1534,9 @@
                 const db = window.firebaseServices.db;
                 const doc = window.firebaseServices.doc;
                 const deleteDoc = window.firebaseServices.deleteDoc;
-                
+
                 console.log('開始刪除商品，ID:', productId);
-                
+
                 try {
                     // 刪除商品文檔
                     await deleteDoc(doc(db, "products", productId));
@@ -1509,7 +1547,7 @@
                 } catch (deleteError) {
                     console.error('刪除操作失敗:', deleteError);
                     console.error('錯誤詳情:', deleteError.code, deleteError.message);
-                    
+
                     if (deleteError.code === 'permission-denied') {
                         alert('刪除權限不足，請確認您是否為管理員，並檢查 Firestore 權限設置。');
                     } else {
@@ -1523,14 +1561,14 @@
                 hideLoading();
             }
         };
-        
+
         // 重置表單
         const resetForm = function() {
             const formTitle = document.getElementById('form-title');
             if (formTitle) {
                 formTitle.textContent = '新增商品';
             }
-            
+
             // 清空表單字段
             document.getElementById('product-id').value = '';
             document.getElementById('product-name').value = '';
@@ -1539,78 +1577,79 @@
             document.getElementById('product-stock').value = '';
             document.getElementById('product-status').value = 'active';
             document.getElementById('product-description').value = '';
-            
+            document.getElementById('product-featured').checked = false;
+
             // 重置圖片預覽
             const previewImg = document.getElementById('preview-img');
             if (previewImg) {
-                previewImg.src = 'images/placeholder.jpg';
+                previewImg.src = '../images/placeholder.jpg';
             }
             document.getElementById('product-image').value = '';
-            
+
             // 清除標籤
             const tagsContainer = document.getElementById('tags-container');
             const tagInput = document.getElementById('tag-input');
-            
+
             // 保留標籤輸入框
             tagsContainer.innerHTML = '';
             tagsContainer.appendChild(tagInput);
         };
-        
+
         // 顯示確認刪除對話框
         const showConfirmDialog = function(productId) {
             const confirmDialog = document.getElementById('confirm-dialog');
             const confirmDeleteBtn = document.getElementById('confirm-delete');
-            
+
             if (confirmDialog && confirmDeleteBtn) {
                 confirmDeleteBtn.dataset.productId = productId;
                 confirmDialog.classList.add('active');
             }
         };
-        
+
         // 隱藏確認刪除對話框
         const hideConfirmDialog = function() {
             const confirmDialog = document.getElementById('confirm-dialog');
             const confirmDeleteBtn = document.getElementById('confirm-delete');
-            
+
             if (confirmDialog && confirmDeleteBtn) {
                 confirmDeleteBtn.dataset.productId = '';
                 confirmDialog.classList.remove('active');
             }
         };
-        
+
         // 添加標籤
         const addTag = function(tagText) {
             const tagsContainer = document.getElementById('tags-container');
             const tagInput = document.getElementById('tag-input');
-            
+
             if (tagsContainer && tagInput) {
                 // 檢查標籤是否已存在
-                const existingTags = Array.from(tagsContainer.querySelectorAll('span')).map(span => 
+                const existingTags = Array.from(tagsContainer.querySelectorAll('span')).map(span =>
                     span.textContent.trim()
                 );
-                
+
                 if (existingTags.includes(tagText)) {
                     return; // 標籤已存在，不重複添加
                 }
-                
+
                 // 創建標籤元素
                 const tagElement = document.createElement('span');
                 tagElement.textContent = tagText;
-                
+
                 // 添加刪除圖標
                 const removeIcon = document.createElement('i');
                 removeIcon.className = 'fas fa-times';
                 removeIcon.addEventListener('click', function() {
                     tagsContainer.removeChild(tagElement);
                 });
-                
+
                 tagElement.appendChild(removeIcon);
-                
+
                 // 插入標籤到容器中，在輸入框前面
                 tagsContainer.insertBefore(tagElement, tagInput);
             }
         };
-        
+
         // 顯示加載中指示器
         const showLoading = function() {
             const loadingOverlay = document.getElementById('loading-overlay');
@@ -1618,7 +1657,7 @@
                 loadingOverlay.classList.add('active');
             }
         };
-        
+
         // 隱藏加載中指示器
         const hideLoading = function() {
             const loadingOverlay = document.getElementById('loading-overlay');
@@ -1626,10 +1665,10 @@
                 loadingOverlay.classList.remove('active');
             }
         };
-        
+
         // 注意：用戶下拉選單功能、漢堡選單功能和登出功能
         // 已經在 admin-common.js 中實現，這裡不需要重複添加
-        
+
         // 開始初始化流程
         waitForAdminCommon();
     });

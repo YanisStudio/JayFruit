@@ -4,6 +4,8 @@
 class AuthModals {
     constructor() {
         this.modalsCreated = false;
+        // 開窗前的焦點位置，全部關閉時還回去
+        this.lastTrigger = null;
         this.init();
     }
 
@@ -22,25 +24,25 @@ class AuthModals {
 
         const modalsHTML = `
             <!-- 登入彈窗 -->
-            <div class="modal" id="login-modal">
+            <div class="modal" id="login-modal" role="dialog" aria-modal="true" aria-labelledby="login-modal-title">
                 <div class="modal-content">
-                    <span class="close-btn" id="close-login">&times;</span>
-                    <h2>選擇登入方式</h2>
-                    
+                    <button type="button" class="close-btn" id="close-login" aria-label="關閉">&times;</button>
+                    <h2 id="login-modal-title">選擇登入方式</h2>
+
                     <div class="login-options">
                         <!-- Google 登入按鈕 -->
                         <button type="button" class="btn btn-google" id="google-login-btn">
                             <i class="fab fa-google"></i>
                             使用 Google 登入
                         </button>
-                        
+
                         <!-- Facebook 登入按鈕（暫時隱藏：Facebook App 尚未完成 Meta 商家驗證，
                              一般顧客目前無法用 Facebook 登入成功；驗證通過後把 style="display:none" 拿掉即可重新開放） -->
                         <button type="button" class="btn btn-facebook" id="facebook-login-btn" style="display:none;">
                             <i class="fab fa-facebook-f"></i>
                             使用 Facebook 登入
                         </button>
-                        
+
                         <!-- LINE 登入按鈕 -->
                         <button type="button" class="btn btn-line" id="line-login-btn">
                             <i class="fab fa-line"></i>
@@ -53,7 +55,7 @@ class AuthModals {
                             使用電話號碼登入
                         </button>
                     </div>
-                    
+
                     <div class="login-info">
                         <p>選擇任一方式即可快速登入或註冊</p>
                     </div>
@@ -61,12 +63,12 @@ class AuthModals {
             </div>
 
             <!-- 電話號碼登入彈窗 -->
-            <div class="modal" id="phone-modal">
+            <div class="modal" id="phone-modal" role="dialog" aria-modal="true" aria-labelledby="phone-modal-title">
                 <div class="modal-content">
-                    <span class="close-btn" id="close-phone">&times;</span>
-                    <h2>電話號碼登入</h2>
+                    <button type="button" class="close-btn" id="close-phone" aria-label="關閉">&times;</button>
+                    <h2 id="phone-modal-title">電話號碼登入</h2>
                     <p>我們將發送驗證碼到您的手機</p>
-                    
+
                     <form id="phone-form">
                         <div class="form-group">
                             <label for="phone-number">手機號碼</label>
@@ -74,10 +76,10 @@ class AuthModals {
                         </div>
                         <button type="submit" class="btn btn-primary">發送驗證碼</button>
                     </form>
-                    
+
                     <!-- reCAPTCHA 容器 -->
                     <div id="recaptcha-container" style="margin: 20px 0; display: none; justify-content: center;"></div>
-                    
+
                     <!-- 驗證碼輸入區域（初始隱藏） -->
                     <div id="verification-section" style="display: none;">
                         <div class="form-group">
@@ -87,7 +89,7 @@ class AuthModals {
                         <button type="button" class="btn btn-primary" id="verify-code-btn">確認驗證碼</button>
                         <button type="button" class="btn btn-secondary" id="resend-code-btn">重新發送</button>
                     </div>
-                    
+
                     <div id="phone-message" style="margin-top: 15px; display: none;"></div>
                 </div>
             </div>
@@ -105,15 +107,54 @@ class AuthModals {
     setupEventListeners() {
         // 登入按鈕事件
         this.bindLoginButtons();
-        
+
         // 關閉按鈕事件
         this.bindCloseButtons();
-        
+
         // 點擊外部關閉事件
         this.bindOutsideClickClose();
-        
+
         // 電話登入相關事件
         this.bindPhoneLoginEvents();
+
+        // 鍵盤：Esc 關閉、Tab 鎖在彈窗裡
+        this.bindKeyboard();
+    }
+
+    // 目前開著的彈窗
+    getOpenModal() {
+        return ['phone-modal', 'login-modal']
+            .map(id => document.getElementById(id))
+            .find(modal => modal && modal.style.display === 'block') || null;
+    }
+
+    // Esc 關閉；Tab 焦點鎖在彈窗裡（aria-modal 只讓讀螢幕忽略背後內容，
+    // 純鍵盤使用者還是會 Tab 穿到被遮住的元素上）
+    bindKeyboard() {
+        document.addEventListener('keydown', (e) => {
+            const modal = this.getOpenModal();
+            if (!modal) return;
+
+            if (e.key === 'Escape') {
+                this.hideAllModals();
+                return;
+            }
+            if (e.key !== 'Tab') return;
+
+            const focusables = Array.from(modal.querySelectorAll(
+                'button:not([disabled]), [href], input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])'
+            )).filter(el => el.offsetParent !== null);
+            if (focusables.length === 0) return;
+            const first = focusables[0];
+            const last = focusables[focusables.length - 1];
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault();
+                first.focus();
+            }
+        });
     }
 
     // 綁定登入按鈕
@@ -203,9 +244,13 @@ class AuthModals {
     showModal(modalId) {
         const modal = document.getElementById(modalId);
         if (modal) {
+            // 從頁面上的按鈕開啟時記住來源（彈窗之間切換時不要覆蓋）
+            if (!this.getOpenModal()) {
+                this.lastTrigger = document.activeElement;
+            }
             modal.style.display = 'block';
-            // 自動聚焦到第一個輸入框
-            const firstInput = modal.querySelector('input[type="tel"], input[type="text"]');
+            // 焦點移進彈窗：有輸入框就聚焦輸入框，否則聚焦關閉按鈕
+            const firstInput = modal.querySelector('input[type="tel"], input[type="text"]') || modal.querySelector('.close-btn');
             if (firstInput) {
                 setTimeout(() => firstInput.focus(), 100);
             }
@@ -241,6 +286,11 @@ class AuthModals {
     hideAllModals() {
         const modals = ['login-modal', 'phone-modal'];
         modals.forEach(modalId => this.hideModal(modalId));
+        // 焦點還給開窗的按鈕（元素可能已被重新渲染掉，要先確認還在畫面上）
+        if (this.lastTrigger && document.body.contains(this.lastTrigger) && typeof this.lastTrigger.focus === 'function') {
+            this.lastTrigger.focus();
+        }
+        this.lastTrigger = null;
     }
 
     // 顯示登入彈窗（供外部調用）

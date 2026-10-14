@@ -79,14 +79,19 @@ async function main() {
     let backfilled = 0;
     const authUidSet = new Set(authUsers.map(u => u.uid));
 
+    // 整個 users 集合只讀一次放進 Map，迴圈裡直接查表。
+    // 以前是每個帳號各 get() 一次（帳號一多就是上百趟網路來回），最後找孤兒時又整批讀一次
+    const usersSnapshot = await db.collection('users').get();
+    const userSnaps = new Map(usersSnapshot.docs.map(doc => [doc.id, doc]));
+
     for (const userRecord of authUsers) {
         const userRef = db.collection('users').doc(userRecord.uid);
-        const userSnap = await userRef.get();
+        const userSnap = userSnaps.get(userRecord.uid);
         const email = userRecord.email || '';
         const phone = normalizedPhone(userRecord.phoneNumber);
         const name = userRecord.displayName || '';
 
-        if (!userSnap.exists) {
+        if (!userSnap) {
             const { creationTime, lastSignInTime } = getAuthTimes(userRecord);
             const provider = detectProvider(userRecord);
             await userRef.set({
@@ -154,7 +159,6 @@ async function main() {
     }
 
     // 找出 Firestore 裡有、但 Authentication 已經沒有對應帳號的孤兒紀錄，只記錄不自動刪除
-    const usersSnapshot = await db.collection('users').get();
     const orphans = usersSnapshot.docs.filter(doc => !authUidSet.has(doc.id));
     if (orphans.length > 0) {
         console.log(`發現 ${orphans.length} 筆孤兒會員資料（Authentication 已無對應帳號，未自動刪除）:`);

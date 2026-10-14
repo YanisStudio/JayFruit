@@ -2,6 +2,14 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
+    <!-- firebase-warmup：讓瀏覽器一開始解析頁面就先跟 Firebase 握手、下載 SDK，
+         不用等到下面載入 Firebase 的 module 腳本才開始。版本號要跟 import 的一致。 -->
+    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-lite.js">
     <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="images/favicon-16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="images/apple-touch-icon.png">
@@ -19,12 +27,12 @@
     <meta property="og:type" content="website">
     
     <!-- CSS 文件 -->
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/common.css">
-    <link rel="stylesheet" href="css/cart.css">
+    <link rel="stylesheet" href="css/style.css?v=20261014">
+    <link rel="stylesheet" href="css/common.css?v=20261014">
+    <link rel="stylesheet" href="css/cart.css?v=20261014">
     <!-- 新增彈窗樣式 -->
-    <link rel="stylesheet" href="css/auth-modals.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="css/auth-modals.css?v=20261014">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer">
 
     <style>
     /* 分類按鈕（取代原本的分類/價格/排序下拉選單，簡化操作） */
@@ -57,50 +65,11 @@
         color: #fff;
     }
 
-    /* 已下架商品：仍顯示但不可點選，並排到列表最後面 */
-    .product-card.unavailable {
-        opacity: 0.55;
-    }
-
-    .product-card.unavailable .product-image img {
-        filter: grayscale(70%);
-    }
-
-    .product-card .unavailable-badge {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        background: rgba(0, 0, 0, 0.75);
-        color: #fff;
-        padding: 4px 10px;
-        border-radius: 4px;
-        font-size: 12px;
-        z-index: 2;
-    }
-
-    /* 水蜜桃內傷提醒 */
-    .peach-warning {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        margin-top: 8px;
-        padding: 6px 10px;
-        background: #fff8e1;
-        border: 1px solid #ffe082;
-        border-radius: 4px;
-        font-size: 12px;
-        color: #8d6e00;
-        line-height: 1.4;
-    }
-
-    .peach-warning i {
-        color: #f9a825;
-        flex-shrink: 0;
-    }
+    /* 已下架商品、水蜜桃提醒、商品詳細介紹彈窗的樣式在 css/storefront.css */
     </style>
 
     <!-- Firebase SDK引入 -->
-    <script src="js/firebase-config.js"></script>
+    <script src="js/firebase-config.js?v=20261014"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { 
@@ -134,20 +103,19 @@
             setDoc,
             getDoc,
             getDocs,
-            getDocsFromServer,
+            getDocs as getDocsFromServer,
             query,
             orderBy,
             where,
             serverTimestamp
-        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-lite.js";
         
         const firebaseConfig = window.FIREBASE_CONFIG;
         
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        // 自動偵測目前網路環境是否會擋掉預設的串流連線，會的話自動改用相容性更好的
-        // 長輪詢，降低連線逾時、被誤判成「查無資料」的機率
-        const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
+        // 連線設定統一放在 js/firebase-config.js 的 FIRESTORE_SETTINGS（原因寫在那裡）
+        const db = initializeFirestore(app, window.FIRESTORE_SETTINGS);
         
         window.firebaseServices = {
             app: app,
@@ -191,6 +159,7 @@
             signInWithCustomToken
         };
     </script>
+    <link rel="stylesheet" href="css/storefront.css?v=20261014">
 </head>
 <body>
     <header>
@@ -353,41 +322,89 @@
         </section>
     </main>
     
-    <footer>
+    <footer class="site-footer">
         <div class="container">
             <div class="footer-content">
                 <div class="footer-section">
-                    <h3>粉絲專頁</h3>
-                    <p>為您提供最優質的水果選擇</p>
+                    <h3>杰の御果園</h3>
+                    <p>梨山高山果園直營，新鮮直送到府</p>
                     <div class="social-links">
-                        <a href="https://www.facebook.com/jay0955688658" target="_blank"><i class="fab fa-facebook"></i></a>
-                        <a href="https://line.me/R/ti/p/@farmer-jay"><i class="fab fa-line"></i></a>
+                        <a href="https://www.facebook.com/jay0955688658" target="_blank" rel="noopener" title="Facebook 粉絲專頁" aria-label="Facebook 粉絲專頁"><i class="fab fa-facebook"></i></a>
+                        <a href="https://line.me/R/ti/p/@farmer-jay" target="_blank" rel="noopener" title="LINE 官方帳號" aria-label="LINE 官方帳號"><i class="fab fa-line"></i></a>
                     </div>
                 </div>
-                
+
+                <div class="footer-section">
+                    <h3>水果分類</h3>
+                    <ul class="footer-links">
+                        <li><a href="products.html?category=peach">水蜜桃</a></li>
+                        <li><a href="products.html?category=persimmon">甜柿</a></li>
+                        <li><a href="products.html?category=pear">梨子</a></li>
+                        <li><a href="products.html?category=apple">蘋果</a></li>
+                        <li><a href="products.html?category=gift">禮盒</a></li>
+                        <li><a href="products.html">所有商品 &raquo;</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h3>顧客服務</h3>
+                    <ul class="footer-links">
+                        <li><a href="about.html">關於果園</a></li>
+                        <li><a href="contact.html">聯絡我們</a></li>
+                        <li><a href="orders.html">訂單查詢</a></li>
+                        <li><a href="cart.html">購物車</a></li>
+                    </ul>
+                </div>
+
                 <div class="footer-section">
                     <h3>聯絡資訊</h3>
-                    <p><a href="https://line.me/R/ti/p/@farmer-jay" target="_blank" style="color: #06c755; text-decoration: none;"><i class="fab fa-line"></i> LINE 官方帳號：@farmer-jay</a></p>
+                    <p><a href="https://line.me/R/ti/p/@farmer-jay" target="_blank" rel="noopener" style="color: #06c755;"><i class="fab fa-line"></i> LINE 官方帳號：@farmer-jay</a></p>
                     <p><i class="fas fa-map-marker-alt"></i> 果園地址：台中市和平區環山</p>
-                </div>
-                
-                <div class="footer-section">
-                    <h3>客服時間</h3>
-                    <p><i class="far fa-clock"></i> 週一至週五：9:00 - 18:00</p>
+                    <p><i class="far fa-clock"></i> 客服時間：週一至週五 9:00 - 18:00</p>
                 </div>
             </div>
-            
+
             <div class="copyright">
                 <p>&copy; 2025 杰の御果園。保留所有權利。</p>
             </div>
         </div>
     </footer>
     
+    <!-- 商品詳細介紹彈跳視窗（common.js 的 openProductDetailModal 會填入內容） -->
+    <div id="product-detail-modal" class="product-detail-modal"
+         role="dialog" aria-modal="true" aria-labelledby="pd-name">
+        <div class="product-detail-backdrop"></div>
+        <div class="product-detail-panel">
+            <button type="button" class="product-detail-close" aria-label="關閉"><i class="fas fa-times"></i></button>
+            <div class="product-detail-body">
+                <div class="product-detail-image">
+                    <span id="pd-tag" class="product-tag" style="display:none;"></span>
+                    <span id="pd-unavailable" class="unavailable-badge" style="display:none;">已下架</span>
+                    <img id="pd-image" src="images/placeholder.jpg" alt="">
+                </div>
+                <div class="product-detail-info">
+                    <h2 id="pd-name"></h2>
+                    <p class="product-detail-price" id="pd-price"></p>
+                    <p class="product-detail-stock" id="pd-stock"></p>
+
+                    <p class="product-detail-section-label">商品描述</p>
+                    <p class="product-detail-desc-text" id="pd-desc"></p>
+                    <div class="peach-warning" id="pd-peach-warning" style="display:none;"><i class="fas fa-triangle-exclamation"></i> 水蜜桃較易內傷，發現將依比例退款</div>
+
+                    <div class="product-detail-actions">
+                        <button type="button" class="add-to-cart-btn" id="pd-add-to-cart">加入購物車</button>
+                        <button type="button" class="wish-btn" id="pd-wish-btn" aria-label="註記商品"><i class="far fa-heart"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- JavaScript 文件 -->
     <!-- 引入彈窗管理器 -->
-    <script src="js/auth-modals.js"></script>
-    <script src="js/common.js"></script>
-    <script src="js/member.js"></script>
+    <script src="js/auth-modals.js?v=20261014"></script>
+    <script src="js/common.js?v=20261014"></script>
+    <script src="js/member.js?v=20261014"></script>
     
     <!-- 產品頁面專用 JavaScript -->
     <script>
@@ -419,11 +436,24 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(autoScrollToProducts, 500);
 });
 
+// 分類按鈕支援的分類（首頁、頁尾的分類連結會帶 ?category=xxx 進來）
+const VALID_CATEGORIES = ['all', 'pear', 'persimmon', 'peach', 'apple', 'gift', 'featured'];
+
 // 初始化產品頁面
 function initProductsPage() {
+    const requested = new URLSearchParams(window.location.search).get('category');
+    if (requested && VALID_CATEGORIES.includes(requested)) {
+        currentFilters.category = requested;
+        document.querySelectorAll('.category-pill').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.category === requested);
+        });
+        updateSectionTitle();
+    }
+
     loadProducts();
     initFilters();
     initWishlist();
+    initProductDetailModal(); // 事件代理，只需綁定一次
 }
 
 // 自動滾動到商品區域
@@ -457,6 +487,7 @@ async function loadProducts(retryCount = 0) {
         const products = await FirebaseUtils.loadProducts(null, { includeInactive: true });
 
         if (products.length === 0) {
+            if (window.noteFirestoreSuccess) window.noteFirestoreSuccess();
             productGrid.innerHTML = '<div class="no-products">目前沒有可用的產品</div>';
             paginatedPages = [];
             updatePaginationButtons();
@@ -465,24 +496,20 @@ async function loadProducts(retryCount = 0) {
         }
 
         currentProducts = products;
+        if (window.noteFirestoreSuccess) window.noteFirestoreSuccess();
         console.log(`成功載入 ${products.length} 個產品`);
 
-        renderProducts(sortByAvailability(products));
-        initAddToCartButtons(); // 使用 common.js 的函數
-        initWishlistButtons();
-        updateWishlistButtons();
         productsLoaded = true;
+        // 套用目前的分類（可能是從網址 ?category= 帶進來的）
+        applyFilters();
 
     } catch (error) {
         console.error("載入產品失敗，判定為連線問題，自動重試:", error);
 
-        // 同一個連線物件卡住的話，光靠重試往往要等很多次才會自己恢復，
-        // 跟使用者手動整頁重新整理立刻正常有明顯落差。第 1 次失敗多半只是
-        // 瞬間頓一下，重試一次通常會自己恢復；第 2 次也失敗才重建 Firestore
-        // 連線再繼續重試（resetFirestoreConnection 內建節流，短時間內不會
-        // 重複重建）
-        if (retryCount >= 1 && window.resetFirestoreConnection) {
-            await window.resetFirestoreConnection();
+        // 要不要重建 Firestore 連線統一由 js/common.js 的 maybeResetFirestoreConnection()
+        // 決定（這一頁從沒連上過就立刻重建；連上過之後才失敗則持續失敗 30 秒才重建）
+        if (window.maybeResetFirestoreConnection) {
+            await window.maybeResetFirestoreConnection();
         }
 
         const delay = Math.min(1000 * Math.pow(2, retryCount), 8000);
@@ -499,12 +526,15 @@ function sortByAvailability(products) {
 
 // 依商品陣列建立卡片 HTML（供每一頁重複使用）
 function buildProductCardsHTML(products) {
+    const esc = window.escapeHtml;
     let productsHTML = '';
+    window.__productDataCache = window.__productDataCache || {};
 
     products.forEach(product => {
+        window.__productDataCache[product.id] = product;
         const isAvailable = product.status === 'active';
-        const tagHTML = product.tags?.length > 0 ? `<span class="product-tag">${product.tags[0]}</span>` : '';
-        const stockText = product.stock > 0 ? `(庫存: ${product.stock} 件)` : '(無庫存)';
+        const tagHTML = product.tags?.length > 0 ? `<span class="product-tag">${esc(product.tags[0])}</span>` : '';
+        const stockText = product.stock > 0 ? `(庫存: ${product.stock} ${esc(product.unit)})` : '(無庫存)';
         const stockClass = product.stock < 5 ? 'low-stock' : '';
         const cardClass = isAvailable ? 'product-card' : 'product-card unavailable';
         const unavailableBadge = isAvailable ? '' : '<span class="unavailable-badge">已下架</span>';
@@ -515,27 +545,28 @@ function buildProductCardsHTML(products) {
 
         productsHTML += `
             <div class="${cardClass}"
-                data-product-id="${product.id}"
-                data-product-name="${window.escapeHtml(product.name)}"
-                data-product-price="${product.price}"
-                data-product-stock="${product.stock}"
-                data-category="${product.category}">
+                data-product-id="${esc(product.id)}"
+                data-product-name="${esc(product.name)}"
+                data-product-price="${Number(product.price) || 0}"
+                data-product-stock="${Number(product.stock) || 0}"
+                data-category="${esc(product.category)}">
                 <div class="product-image">
                     ${tagHTML}
                     ${unavailableBadge}
-                    <img src="${product.imageUrl || 'images/placeholder.jpg'}" alt="${window.escapeHtml(product.name)}" onerror="this.onerror=null; this.src='images/placeholder.jpg';">
+                    <img src="${esc(product.imageUrl || 'images/placeholder.jpg')}" alt="${esc(product.name)}" loading="lazy" decoding="async" onerror="this.onerror=null; this.src='images/placeholder.jpg';">
                 </div>
                 <div class="product-info">
                     <div class="product-content">
-                        <h3>${window.escapeHtml(product.name)}</h3>
-                        <p class="product-desc">${window.escapeHtml(product.description)}</p>
-                        <p class="product-price">$${product.price}/${product.unit}</p>
+                        <h3>${esc(product.name)}</h3>
+                        <p class="product-desc">${esc(product.description)}</p>
+                        <button type="button" class="product-detail-hint" aria-label="查看 ${esc(product.name)} 的詳細介紹"><i class="fas fa-search" aria-hidden="true"></i> 查看詳細介紹</button>
+                        <p class="product-price">$${Number(product.price) || 0}/${esc(product.unit)}</p>
                         <p class="stock-info ${stockClass}">${isAvailable ? stockText : '已下架'}</p>
                         ${peachWarningHTML}
                     </div>
                     <div class="product-actions">
-                        <button class="add-to-cart-btn" ${disabledAttr}>加入購物車</button>
-                        <button class="wish-btn" ${isAvailable ? '' : 'disabled'}><i class="far fa-heart"></i></button>
+                        <button type="button" class="add-to-cart-btn" ${disabledAttr}>加入購物車</button>
+                        <button type="button" class="wish-btn" aria-label="註記 ${esc(product.name)}" ${isAvailable ? '' : 'disabled'}><i class="far fa-heart"></i></button>
                     </div>
                 </div>
             </div>
@@ -564,18 +595,28 @@ function renderCurrentPage() {
     if (!productGrid) return;
 
     const products = paginatedPages[currentPage - 1] || [];
-    productGrid.innerHTML = buildProductCardsHTML(products);
+    // 篩選後沒有商品時要說清楚，不能留一片空白讓人以為頁面壞了
+    productGrid.innerHTML = products.length > 0
+        ? buildProductCardsHTML(products)
+        : '<div class="no-products">這個分類目前沒有商品，歡迎看看其他水果</div>';
 }
 
 // 初始化篩選功能（分類按鈕，點擊立即套用篩選）
 function initFilters() {
     const pillButtons = document.querySelectorAll('.category-pill');
     pillButtons.forEach(btn => {
-        btn.addEventListener('click', function() {
+            btn.addEventListener('click', function() {
             pillButtons.forEach(b => b.classList.remove('active'));
             this.classList.add('active');
             currentFilters.category = this.dataset.category;
-            applyFilters();
+            // 網址同步更新，重新整理或分享連結時會停在同一個分類
+            const url = new URL(window.location.href);
+            if (currentFilters.category === 'all') url.searchParams.delete('category');
+            else url.searchParams.set('category', currentFilters.category);
+            history.replaceState(null, '', url.pathname + url.search);
+            // 商品還沒載入完成時只記住分類，載入完成後 loadProducts 會套用
+            if (productsLoaded) applyFilters();
+            else updateSectionTitle();
         });
     });
 }
@@ -696,8 +737,10 @@ function initWishlist() {
 }
 
 // 初始化願望清單按鈕
+// 排除彈窗裡的那顆（#pd-wish-btn）：它由 openProductDetailModal() 直接設 onclick，
+// 這裡的 cloneNode 會把 onclick 一起換掉，彈窗開著時剛好重新渲染就會失效
 function initWishlistButtons() {
-    const wishButtons = document.querySelectorAll('.wish-btn');
+    const wishButtons = document.querySelectorAll('.wish-btn:not(#pd-wish-btn)');
     wishButtons.forEach(button => {
         const newButton = button.cloneNode(true);
         button.parentNode.replaceChild(newButton, button);
@@ -757,6 +800,7 @@ function updateWishlistButtons() {
         }
     });
 }
+window.updateWishlistButtons = updateWishlistButtons;
     </script>
 </body>
 </html>

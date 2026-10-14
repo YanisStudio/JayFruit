@@ -2,6 +2,14 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
+    <!-- firebase-warmup：讓瀏覽器一開始解析頁面就先跟 Firebase 握手、下載 SDK，
+         不用等到下面載入 Firebase 的 module 腳本才開始。版本號要跟 import 的一致。 -->
+    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-lite.js">
     <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="images/favicon-16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="images/apple-touch-icon.png">
@@ -11,20 +19,20 @@
     <meta name="description" content="杰の御果園提供台灣高山優質水果，新鮮直送到府。精選梨子、水蜜桃、蘋果及各式水果禮盒，品質保證。">
     <meta name="keywords" content="台灣水果,高山水果,新鮮水果,水果禮盒,梨子,水蜜桃,蘋果,杰の御果園,果園直送,有機水果">
     <meta name="author" content="杰の御果園">
-    
+
     <!-- Open Graph 標籤 -->
     <meta property="og:title" content="杰の御果園 - 優質台灣高山水果直送">
     <meta property="og:description" content="台灣高山優質水果，新鮮直送到府。精選梨子、水蜜桃、蘋果及各式水果禮盒，品質保證。">
     <meta property="og:image" content="https://jayfarmer.tw/images/logo.jpg">
     <meta property="og:url" content="https://jayfarmer.tw/orders.html">
     <meta property="og:type" content="website">
-    
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/common.css">
-    <link rel="stylesheet" href="css/cart.css">
-    <link rel="stylesheet" href="css/auth-modals.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    
+
+    <link rel="stylesheet" href="css/style.css?v=20261014">
+    <link rel="stylesheet" href="css/common.css?v=20261014">
+    <link rel="stylesheet" href="css/cart.css?v=20261014">
+    <link rel="stylesheet" href="css/auth-modals.css?v=20261014">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer">
+
     <style>
 /* 訂單記錄頁面特有樣式 */
 .orders-section {
@@ -555,33 +563,33 @@
     .orders-content {
         flex-direction: column;
     }
-    
+
     .orders-sidebar {
         max-width: 100%;
         margin-bottom: 20px;
     }
-    
+
     .order-detail-header {
         flex-direction: column;
         align-items: flex-start;
     }
-    
+
     .order-detail-header .order-detail-status {
         margin-top: 10px;
     }
-    
+
     .orders-section {
         padding: 30px 0;
     }
-    
+
     .order-detail {
         padding: 15px;
     }
-    
+
     .order-actions-buttons {
         flex-direction: column;
     }
-    
+
     .order-action-btn {
         width: 100%;
         justify-content: center;
@@ -592,15 +600,15 @@
     .orders-section {
         padding: 20px 0;
     }
-    
+
     .order-detail {
         padding: 10px;
     }
-    
+
     .order-item {
         padding: 12px;
     }
-    
+
     .item-image {
         width: 50px;
         height: 50px;
@@ -610,14 +618,14 @@
 </style>
 
     <!-- Firebase SDK引入 - 使用統一版本 10.7.1 -->
-    <script src="js/firebase-config.js"></script>
+    <script src="js/firebase-config.js?v=20261014"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { 
-            getAuth, 
-            createUserWithEmailAndPassword, 
-            signInWithEmailAndPassword, 
-            signOut, 
+        import {
+            getAuth,
+            createUserWithEmailAndPassword,
+            signInWithEmailAndPassword,
+            signOut,
             onAuthStateChanged,
             sendSignInLinkToEmail,
             isSignInWithEmailLink,
@@ -636,33 +644,36 @@
             signInWithCredential,
             signInWithCustomToken
         } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { 
-            initializeFirestore, 
-            collection, 
-            doc, 
-            setDoc, 
+        import {
+            initializeFirestore,
+            terminate,
+            collection,
+            doc,
+            setDoc,
             getDoc,
             getDocs,
-            getDocsFromServer,
+            getDocs as getDocsFromServer,
             updateDoc,
             query,
             orderBy,
             where,
-            serverTimestamp 
-        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-        
+            serverTimestamp
+        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-lite.js";
+
         // Firebase配置 - 統一使用與其他頁面相同的配置
         const firebaseConfig = window.FIREBASE_CONFIG;
-        
+
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        // 自動偵測目前網路環境是否會擋掉預設的串流連線，會的話自動改用相容性更好的
-        // 長輪詢，降低連線逾時、被誤判成「查無資料」的機率
-        const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
-        
+        // 連線設定統一放在 js/firebase-config.js 的 FIRESTORE_SETTINGS（原因寫在那裡）
+        const db = initializeFirestore(app, window.FIRESTORE_SETTINGS);
+
         window.firebaseServices = {
             auth: auth,
             db: db,
+            app: app,
+            initializeFirestore,
+            terminate,
             getAuth,
             createUserWithEmailAndPassword,
             signInWithEmailAndPassword,
@@ -694,6 +705,7 @@
             signInWithCustomToken
         };
     </script>
+    <link rel="stylesheet" href="css/storefront.css?v=20261014">
 </head>
 <body>
     <header>
@@ -702,7 +714,7 @@
             <button class="menu-toggle" id="menu-toggle">
                 <i class="fas fa-bars"></i>
             </button>
-            
+
             <a href="index.html" class="logo-container">
                 <img src="images/logo.jpg" alt="杰の御果園 logo" width="492" height="649" class="logo-image">
                 <div class="logo">
@@ -710,7 +722,7 @@
                     <p>新鮮直送・品質保證</p>
                 </div>
             </a>
-            
+
             <!-- 手機版頂部購物車 -->
             <div class="mobile-header-actions">
                 <div class="cart-icon-container">
@@ -720,7 +732,7 @@
                     </a>
                 </div>
             </div>
-            
+
             <!-- 導航選單 -->
             <nav id="main-nav">
                 <ul>
@@ -728,14 +740,14 @@
                     <li><a href="products.html">商品</a></li>
                     <li><a href="about.html">關於果園</a></li>
                     <li><a href="contact.html">聯絡我們</a></li>
-                    
+
                     <!-- 手機版選單中的操作選項 -->
                     <div class="mobile-actions">
                         <!-- 會員系統 - 未登入狀態 -->
                         <div class="user-actions" id="user-actions-mobile">
                             <a href="#" class="btn-login" id="login-btn-mobile">登入</a>
                         </div>
-                        
+
                         <!-- 會員系統 - 已登入狀態 (手機版) -->
                         <div class="user-profile-mobile" id="user-profile-mobile">
                             <div class="user-info">
@@ -753,7 +765,7 @@
                     </div>
                 </ul>
             </nav>
-            
+
             <!-- 桌面版右側元素 -->
             <div class="header-right">
                 <!-- 購物車圖標 -->
@@ -763,12 +775,12 @@
                         <span class="cart-count" id="cart-count">0</span>
                     </a>
                 </div>
-                
+
                 <!-- 會員系統 - 未登入狀態 -->
                 <div class="user-actions" id="user-actions">
                     <a href="#" class="btn-login" id="login-btn">登入</a>
                 </div>
-                
+
                 <!-- 會員系統 - 已登入狀態 -->
                 <div class="user-profile" id="user-profile">
                     <div class="user-name" id="user-dropdown-btn">
@@ -787,12 +799,12 @@
             </div>
         </div>
     </header>
-    
+
     <!-- 半透明背景覆蓋 (用於手機版選單) -->
     <div class="menu-overlay" id="menu-overlay"></div>
-    
+
     <!-- 彈窗會由 auth-modals.js 動態創建 -->
-    
+
     <main>
         <section class="product-hero profile-banner">
             <div class="container">
@@ -800,7 +812,7 @@
                 <p>查看並管理您的水果訂單</p>
             </div>
         </section>
-        
+
         <section class="orders-section">
             <div class="container orders-container">
                 <!-- 未登入提示 -->
@@ -812,7 +824,7 @@
                         <button id="login-redirect-btn" class="btn btn-primary">前往登入</button>
                     </div>
                 </div>
-                
+
                 <!-- 訂單記錄內容 -->
                 <div id="orders-content" class="orders-content" style="display: none;">
                     <div class="orders-sidebar">
@@ -826,7 +838,7 @@
                             </ul>
                         </div>
                     </div>
-                    
+
                     <div class="orders-main">
                         <div class="orders-main-content">
                             <div class="order-list" id="order-list">
@@ -834,7 +846,7 @@
                                     <p>載入訂單中...</p>
                                 </div>
                             </div>
-                            
+
                             <div class="order-detail" id="order-detail">
                                 <div class="no-order-selected">
                                     <div class="no-order-selected">
@@ -845,7 +857,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- 聯絡我們區塊移到最下面 -->
                 <div class="help-section">
                     <h3>需要幫助？</h3>
@@ -855,47 +867,65 @@
             </div>
         </section>
     </main>
-    
-    <footer>
+
+    <footer class="site-footer">
         <div class="container">
             <div class="footer-content">
                 <div class="footer-section">
-                    <h3>粉絲專頁</h3>
-                    <p>為您提供最優質的水果選擇</p>
+                    <h3>杰の御果園</h3>
+                    <p>梨山高山果園直營，新鮮直送到府</p>
                     <div class="social-links">
-                        <a href="https://www.facebook.com/jay0955688658" target="_blank" title="Facebook 粉絲頁"><i class="fab fa-facebook"></i></a>
-                        <a href="https://line.me/R/ti/p/@farmer-jay" target="_blank" title="LINE官方帳號"><i class="fab fa-line"></i></a>
+                        <a href="https://www.facebook.com/jay0955688658" target="_blank" rel="noopener" title="Facebook 粉絲專頁" aria-label="Facebook 粉絲專頁"><i class="fab fa-facebook"></i></a>
+                        <a href="https://line.me/R/ti/p/@farmer-jay" target="_blank" rel="noopener" title="LINE 官方帳號" aria-label="LINE 官方帳號"><i class="fab fa-line"></i></a>
                     </div>
                 </div>
-                
+
+                <div class="footer-section">
+                    <h3>水果分類</h3>
+                    <ul class="footer-links">
+                        <li><a href="products.html?category=peach">水蜜桃</a></li>
+                        <li><a href="products.html?category=persimmon">甜柿</a></li>
+                        <li><a href="products.html?category=pear">梨子</a></li>
+                        <li><a href="products.html?category=apple">蘋果</a></li>
+                        <li><a href="products.html?category=gift">禮盒</a></li>
+                        <li><a href="products.html">所有商品 &raquo;</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h3>顧客服務</h3>
+                    <ul class="footer-links">
+                        <li><a href="about.html">關於果園</a></li>
+                        <li><a href="contact.html">聯絡我們</a></li>
+                        <li><a href="orders.html">訂單查詢</a></li>
+                        <li><a href="cart.html">購物車</a></li>
+                    </ul>
+                </div>
+
                 <div class="footer-section">
                     <h3>聯絡資訊</h3>
-                    <p><a href="https://line.me/R/ti/p/@farmer-jay" target="_blank" style="color: #06c755; text-decoration: none;"><i class="fab fa-line"></i> LINE 官方帳號：@farmer-jay</a></p>
+                    <p><a href="https://line.me/R/ti/p/@farmer-jay" target="_blank" rel="noopener" style="color: #06c755;"><i class="fab fa-line"></i> LINE 官方帳號：@farmer-jay</a></p>
                     <p><i class="fas fa-map-marker-alt"></i> 果園地址：台中市和平區環山</p>
-                </div>
-                
-                <div class="footer-section">
-                    <h3>客服時間</h3>
-                    <p><i class="far fa-clock"></i> 週一至週五：9:00 - 18:00</p>
+                    <p><i class="far fa-clock"></i> 客服時間：週一至週五 9:00 - 18:00</p>
                 </div>
             </div>
-            
+
             <div class="copyright">
                 <p>&copy; 2025 杰の御果園。保留所有權利。</p>
             </div>
         </div>
     </footer>
-    
+
     <!-- 引入彈窗管理器 -->
-    <script src="js/auth-modals.js"></script>
-    <script src="js/common.js"></script>
-    <script src="js/member.js"></script>
+    <script src="js/auth-modals.js?v=20261014"></script>
+    <script src="js/common.js?v=20261014"></script>
+    <script src="js/member.js?v=20261014"></script>
 
     <script>
 document.addEventListener('DOMContentLoaded', function() {
     // 初始化共用功能
     initCommonFeatures();
-    
+
     // 初始化訂單記錄頁面
     initOrdersPage();
 });
@@ -916,7 +946,7 @@ function initUserInterface() {
             }
         });
     }
-    
+
     // 側邊欄登出按鈕功能
     const sidebarLogoutBtn = document.getElementById('sidebar-logout-btn');
     if (sidebarLogoutBtn) {
@@ -932,10 +962,10 @@ function checkLoginStatus() {
         console.error('Firebase 服務未初始化');
         return;
     }
-    
+
     const notLoggedInSection = document.getElementById('not-logged-in');
     const ordersContentSection = document.getElementById('orders-content');
-    
+
     window.firebaseServices.onAuthStateChanged(window.firebaseServices.auth, function(user) {
         if (user) {
             if (notLoggedInSection) notLoggedInSection.style.display = 'none';
@@ -953,35 +983,35 @@ function detectUserLoginMethod(user) {
     console.log('=== 分析用戶登入方式 ===');
     console.log('用戶資料:', user);
     console.log('providerData:', user.providerData);
-    
+
     let loginMethod = 'email'; // 預設
     let searchField = null;
     let searchValue = null;
-    
+
     // 檢查提供者資訊
     if (user.providerData && user.providerData.length > 0) {
         const provider = user.providerData[0];
         console.log('主要提供者:', provider);
-        
+
         switch(provider.providerId) {
             case 'google.com':
                 loginMethod = 'google';
                 searchField = 'customer.email';
                 searchValue = user.email;
                 break;
-                
+
             case 'facebook.com':
                 loginMethod = 'facebook';
                 searchField = 'customer.email';
                 searchValue = user.email;
                 break;
-                
+
             case 'phone':
                 loginMethod = 'phone';
                 searchField = 'customer.phone';
                 searchValue = user.phoneNumber ? user.phoneNumber.replace(/^\+886/, '0') : null;
                 break;
-                
+
             case 'password':
             default:
                 loginMethod = 'email';
@@ -990,7 +1020,7 @@ function detectUserLoginMethod(user) {
                 break;
         }
     }
-    
+
     // 特殊情況：電話號碼登入但沒有電子郵件
     if (user.phoneNumber && !user.email) {
         loginMethod = 'phone';
@@ -1021,7 +1051,7 @@ function handleLogout() {
     window.firebaseServices.signOut(window.firebaseServices.auth)
         .then(() => {
             console.log("登出成功");
-            
+
             // 清除本地存儲中的用戶狀態
             localStorage.removeItem('userIsLoggedIn');
             localStorage.removeItem('userEmail');
@@ -1037,27 +1067,30 @@ function handleLogout() {
 
 async function loadUserOrders(user) {
     const orderListContainer = document.getElementById('order-list');
-    
+
     if (!orderListContainer) return;
-    
+
     orderListContainer.innerHTML = '<div class="loading"><p>載入訂單中...</p></div>';
-    
+
     try {
         console.log("開始智能查詢訂單...");
-        
+
         // 檢測用戶登入方式
         const { loginMethod, searchField, searchValue } = detectUserLoginMethod(user);
-        
+
         if (!searchField || !searchValue) {
             orderListContainer.innerHTML = '<div class="no-orders"><p>無法識別用戶資訊，請重新登入</p></div>';
             return;
         }
-        
+
         console.log(`使用 ${loginMethod} 登入方式查詢訂單`);
         console.log(`查詢欄位: ${searchField} = ${searchValue}`);
-        
+
         let allOrders = [];
-        
+        // 兩條查詢互補（會員訂單看 userId、舊訂單靠信箱找），只要有一條成功就代表
+        // 真的連上了；兩條都失敗才是「讀不到」，不能顯示成「您目前沒有任何訂單」
+        let anyQuerySucceeded = false;
+
         try {
             // 方法1：使用用戶ID查詢（最可靠）
             console.log('嘗試透過 userId 查詢...');
@@ -1067,19 +1100,20 @@ async function loadUserOrders(user) {
             );
             // 用 getDocsFromServer 而不是 getDocs：連線不穩時 getDocs 會悄悄退回
             // 本地空快取，讓這裡誤判成「這個人沒有訂單」，跟商品頁踩過的同一個坑
-            const userIdSnapshot = await window.firebaseServices.getDocsFromServer(userIdQuery);
-            
+            const userIdSnapshot = await window.withReadTimeout(window.firebaseServices.getDocsFromServer(userIdQuery));
+            anyQuerySucceeded = true;
+
             userIdSnapshot.forEach(doc => {
                 const orderData = doc.data();
                 orderData.id = doc.id;
                 allOrders.push(orderData);
                 console.log('透過 userId 找到訂單:', orderData.orderNumber || doc.id);
             });
-            
+
         } catch (userIdError) {
             console.warn('透過 userId 查詢失敗:', userIdError);
         }
-        
+
         try {
             // 方法2：根據登入方式使用對應欄位查詢
             console.log(`嘗試透過 ${searchField} 查詢...`);
@@ -1087,87 +1121,64 @@ async function loadUserOrders(user) {
                 window.firebaseServices.collection(window.firebaseServices.db, 'orders'),
                 window.firebaseServices.where(searchField, '==', searchValue)
             );
-            const fieldSnapshot = await window.firebaseServices.getDocsFromServer(fieldQuery);
-            
+            const fieldSnapshot = await window.withReadTimeout(window.firebaseServices.getDocsFromServer(fieldQuery));
+            anyQuerySucceeded = true;
+
             fieldSnapshot.forEach(doc => {
                 const orderData = doc.data();
                 orderData.id = doc.id;
-                
+
                 // 避免重複加入相同訂單
                 if (!allOrders.some(order => order.id === orderData.id)) {
                     allOrders.push(orderData);
                     console.log(`透過 ${searchField} 找到訂單:`, orderData.orderNumber || doc.id);
                 }
             });
-            
+
         } catch (fieldError) {
+            // 安全規則只允許查詢「保證每一筆都是自己的」訂單，用電話查別人也可能用的欄位一定會被拒絕；
+            // 以前這裡還會再「抓整個 orders 集合自己篩」當備用，那個查詢永遠會被規則拒絕，已移除
             console.warn(`透過 ${searchField} 查詢失敗:`, fieldError);
-            
-            // 方法3：備用查詢 - 獲取所有訂單並手動篩選
-            console.log('使用備用查詢方法...');
-            try {
-                const allOrdersSnapshot = await window.firebaseServices.getDocsFromServer(
-                    window.firebaseServices.collection(window.firebaseServices.db, 'orders')
-                );
-                
-                allOrdersSnapshot.forEach(doc => {
-                    const orderData = doc.data();
-                    orderData.id = doc.id;
-                    
-                    let isMatch = false;
-                    
-                    // 檢查是否匹配
-                    if (searchField === 'customer.email' && orderData.customer && orderData.customer.email === searchValue) {
-                        isMatch = true;
-                    } else if (searchField === 'customer.phone' && orderData.customer && orderData.customer.phone === searchValue) {
-                        isMatch = true;
-                    } else if (orderData.userId === user.uid) {
-                        isMatch = true;
-                    }
-                    
-                    if (isMatch && !allOrders.some(order => order.id === orderData.id)) {
-                        allOrders.push(orderData);
-                        console.log('透過備用方法找到訂單:', orderData.orderNumber || doc.id);
-                    }
-                });
-                
-            } catch (backupError) {
-                console.error('備用查詢也失敗:', backupError);
-            }
         }
-        
+
+        if (!anyQuerySucceeded) {
+            throw new Error('無法連線到伺服器讀取訂單');
+        }
+
         console.log(`總共找到 ${allOrders.length} 筆訂單`);
-        
+
+        if (window.noteFirestoreSuccess) window.noteFirestoreSuccess();
+
         if (allOrders.length === 0) {
             orderListContainer.innerHTML = '<div class="no-orders"><p>您目前沒有任何訂單</p></div>';
             return;
         }
-        
+
         // 按訂單日期排序（最新的在前）
         allOrders.sort((a, b) => {
             const dateA = a.orderDate && a.orderDate.toDate ? a.orderDate.toDate() : new Date(0);
             const dateB = b.orderDate && b.orderDate.toDate ? b.orderDate.toDate() : new Date(0);
             return dateB - dateA;
         });
-        
+
         let ordersHTML = '';
-        
+
         allOrders.forEach(order => {
             let orderDate = '未知日期';
             if (order.orderDate && order.orderDate.toDate) {
                 const date = order.orderDate.toDate();
                 orderDate = date.toLocaleDateString('zh-TW') + ' ' + date.toLocaleTimeString('zh-TW', {hour: '2-digit', minute:'2-digit'});
             }
-            
+
             const { statusText, statusClass } = getOrderStatusInfo(order.status);
-            
+
             // 檢查是否有加購記錄
             const hasAddonIndicator = order.hasAddon ? '<i class="fas fa-plus-circle" style="color: #4caf50; margin-left: 5px;" title="此訂單已加購"></i>' : '';
-            
+
             ordersHTML += `
-                <div class="order-item" data-id="${order.id}">
+                <div class="order-item" data-id="${window.escapeHtml(order.id)}">
                     <div class="order-header">
-                        <span class="order-number">${order.orderNumber || '未知訂單'}${hasAddonIndicator}</span>
+                        <span class="order-number">${window.escapeHtml(order.orderNumber || '未知訂單')}${hasAddonIndicator}</span>
                         <span class="order-status ${statusClass}">${statusText}</span>
                     </div>
                     <div class="order-info">
@@ -1179,9 +1190,9 @@ async function loadUserOrders(user) {
                 </div>
             `;
         });
-        
+
         orderListContainer.innerHTML = ordersHTML;
-        
+
         // 添加點擊事件
         const orderItems = document.querySelectorAll('.order-item');
         orderItems.forEach(item => {
@@ -1189,56 +1200,58 @@ async function loadUserOrders(user) {
                 orderItems.forEach(orderItem => {
                     orderItem.classList.remove('active');
                 });
-                
+
                 this.classList.add('active');
-                
+
                 const orderId = this.getAttribute('data-id');
                 showOrderDetail(orderId);
             });
         });
-        
+
         // 預設選中第一個訂單
         if (orderItems.length > 0) {
             orderItems[0].click();
         }
-        
+
     } catch (error) {
         console.error('獲取訂單時出錯:', error);
         orderListContainer.innerHTML = `
             <div class="loading">
-                <p>獲取訂單時發生錯誤，請稍後再試</p>
-                <p style="font-size: 0.8em; color: #999;">錯誤詳情: ${error.message}</p>
+                <p>網路連線不穩定，暫時無法讀取您的訂單（訂單資料並沒有遺失）。</p>
+                <button type="button" class="btn btn-primary" id="retry-load-orders" style="margin-top: 0.8em;">重新載入</button>
             </div>`;
+        const retryBtn = document.getElementById('retry-load-orders');
+        if (retryBtn) retryBtn.addEventListener('click', () => loadUserOrders(user));
     }
 }
 
 async function showOrderDetail(orderId) {
     const orderDetailContainer = document.getElementById('order-detail');
     if (!orderDetailContainer) return;
-    
+
     orderDetailContainer.innerHTML = '<div class="loading"><p>載入訂單詳情中...</p></div>';
-    
+
     try {
         const orderDoc = await window.firebaseServices.getDoc(
             window.firebaseServices.doc(window.firebaseServices.db, 'orders', orderId)
         );
-        
+
         if (!orderDoc.exists()) {
             orderDetailContainer.innerHTML = '<div class="loading"><p>找不到訂單資料</p></div>';
             return;
         }
-        
+
         const order = orderDoc.data();
         order.id = orderDoc.id;
-        
+
         let orderDate = '未知日期';
         if (order.orderDate && order.orderDate.toDate) {
             const date = order.orderDate.toDate();
             orderDate = date.toLocaleDateString('zh-TW') + ' ' + date.toLocaleTimeString('zh-TW', {hour: '2-digit', minute:'2-digit'});
         }
-        
+
         const { statusText, statusClass } = getOrderStatusInfo(order.status);
-        
+
         // 從 Firebase 獲取產品圖片
         // 這個函式每點一筆訂單就會跑一次，原本抓整個商品目錄太浪費，
         // 改成只查這張訂單實際用到的商品 ID，平行查詢
@@ -1266,14 +1279,14 @@ async function showOrderDetail(orderId) {
         } catch (error) {
             console.error('獲取產品圖片失敗:', error);
         }
-        
+
         let orderItemsHTML = '';
         if (order.items && order.items.length > 0) {
             orderItemsHTML = '<div class="order-items-list">';
             order.items.forEach(item => {
                 // 修正圖片 URL 獲取邏輯
                 let imageUrl = 'images/placeholder.jpg'; // 預設圖片
-                
+
                 // 優先從 Firebase 產品資料獲取圖片
                 if (item.id && productDetails[item.id] && productDetails[item.id].imageUrl) {
                     imageUrl = productDetails[item.id].imageUrl;
@@ -1286,11 +1299,11 @@ async function showOrderDetail(orderId) {
                 else if (item.image) {
                     imageUrl = item.image;
                 }
-                                 
+
                 orderItemsHTML += `
-                    <div class="order-item-detail" data-product-id="${item.id || '未知ID'}">
+                    <div class="order-item-detail" data-product-id="${window.escapeHtml(item.id || '未知ID')}">
                         <div class="item-image">
-                            <img src="${imageUrl}"
+                            <img src="${window.escapeHtml(imageUrl)}"
                                  alt="${window.escapeHtml(item.name)}"
                                  onerror="this.onerror=null; this.src='images/placeholder.jpg';">
                         </div>
@@ -1306,7 +1319,7 @@ async function showOrderDetail(orderId) {
         } else {
             orderItemsHTML = '<p>此訂單沒有商品資料</p>';
         }
-        
+
         let paymentReminderHTML = '';
         if (order.status === 'pending' && order.payment === 'transfer') {
             paymentReminderHTML = `
@@ -1315,7 +1328,7 @@ async function showOrderDetail(orderId) {
                 </div>
             `;
         }
-        
+
         // 加購歷史記錄
         let addonHistoryHTML = '';
         if (order.hasAddon && order.addonHistory && order.addonHistory.length > 0) {
@@ -1327,11 +1340,11 @@ async function showOrderDetail(orderId) {
                 <div class="addon-history">
                     <h4><i class="fas fa-history"></i> 加購記錄</h4>
             `;
-            
+
             order.addonHistory.forEach((addon, index) => {
                 const addonDate = new Date(addon.date).toLocaleString('zh-TW');
-                const addonItems = addon.items.map(item => `${window.escapeHtml(item.name)} x${item.quantity}`).join(', ');
-                
+                const addonItems = (addon.items || []).map(item => `${window.escapeHtml(item.name)} x${item.quantity}`).join(', ');
+
                 addonHistoryHTML += `
                     <div class="addon-entry">
                         <div class="addon-entry-header">
@@ -1345,10 +1358,10 @@ async function showOrderDetail(orderId) {
                     </div>
                 `;
             });
-            
+
             addonHistoryHTML += '</div>';
         }
-        
+
         // 訂單操作按鈕
         let orderActionsHTML = '';
         if (canShowOrderActions(order.status)) {
@@ -1356,8 +1369,8 @@ async function showOrderDetail(orderId) {
                 <div class="order-actions">
                     <h4><i class="fas fa-tools"></i> 訂單操作</h4>
                     <div class="order-actions-buttons">
-                        ${canAddToOrder(order.status) ? 
-                            `<a href="order-addon.html?orderId=${order.id}" class="order-action-btn addon-btn">
+                        ${canAddToOrder(order.status) ?
+                            `<a href="order-addon.html?orderId=${encodeURIComponent(order.id)}" class="order-action-btn addon-btn">
                                 <i class="fas fa-plus-circle"></i>
                                 加購商品
                             </a>` : ''
@@ -1366,27 +1379,27 @@ async function showOrderDetail(orderId) {
                 </div>
             `;
         }
-        
+
         const notesFormHTML = `
             <div class="notes-form">
                 <label for="order-notes">新增備註：</label>
                 <textarea id="order-notes" placeholder="如有特殊要求或需要告知我們的事項，請在此填寫..."></textarea>
-                <button id="update-notes-btn" data-id="${order.id}">新增備註</button>
+                <button id="update-notes-btn" data-id="${window.escapeHtml(order.id)}">新增備註</button>
             </div>
         `;
-        
+
         const shippingMethodText = order.shipping === 'home' ? '宅配到府' : '超商取貨';
         const paymentMethodText = order.payment === 'transfer' ? 'ATM轉帳' : '信用卡付款';
-        
+
         const detailHTML = `
             <div class="order-detail-header">
-                <h2>訂單 ${order.orderNumber || '未知訂單'}</h2>
+                <h2>訂單 ${window.escapeHtml(order.orderNumber || '未知訂單')}</h2>
                 <span class="order-detail-status ${statusClass}">${statusText}</span>
             </div>
-            
+
             ${paymentReminderHTML}
             ${addonHistoryHTML}
-            
+
             <div class="order-detail-section">
                 <h3>收件人資訊</h3>
                 <p><strong>姓名：</strong> ${window.escapeHtml(order.customer?.name) || '未知'}</p>
@@ -1402,12 +1415,12 @@ async function showOrderDetail(orderId) {
                 <p><strong>付款方式：</strong> ${paymentMethodText}</p>
                 <p><strong>備註：</strong> ${order.notes ? window.escapeHtml(order.notes).replace(/\n/g, '<br>') : '無'}</p>
             </div>
-            
+
             <div class="order-detail-section">
                 <h3>商品明細</h3>
                 ${orderItemsHTML}
             </div>
-            
+
             <div class="order-summary">
                 <div class="summary-row">
                     <span>商品小計：</span>
@@ -1422,13 +1435,13 @@ async function showOrderDetail(orderId) {
                     <span>${order.total || 0}</span>
                 </div>
             </div>
-            
+
             ${orderActionsHTML}
             ${notesFormHTML}
         `;
-        
+
         orderDetailContainer.innerHTML = detailHTML;
-        
+
         const updateNotesBtn = document.getElementById('update-notes-btn');
         if (updateNotesBtn) {
             updateNotesBtn.addEventListener('click', function() {
@@ -1460,50 +1473,50 @@ async function updateOrderNotes(orderId, notes) {
         showToast('備註不能為空');
         return;
     }
-    
+
     // 禁用按鈕，防止重複提交
     const updateBtn = document.getElementById('update-notes-btn');
     const originalBtnText = updateBtn.textContent;
     updateBtn.disabled = true;
     updateBtn.textContent = '新增中...';
-    
+
     try {
         const orderDoc = await window.firebaseServices.getDoc(
             window.firebaseServices.doc(window.firebaseServices.db, 'orders', orderId)
         );
-        
+
         if (orderDoc.exists()) {
             const orderData = orderDoc.data();
-            
+
             const now = new Date();
             const timestamp = now.toLocaleString('zh-TW');
             const newNoteEntry = `[${timestamp}] ${notes}`;
-            
+
             const existingNotes = orderData.notes || '';
             let updatedNotes;
-            
+
             if (existingNotes.trim() === '') {
                 updatedNotes = newNoteEntry;
             } else {
                 updatedNotes = existingNotes + '\n' + newNoteEntry;
             }
-            
+
             await window.firebaseServices.updateDoc(
                 window.firebaseServices.doc(window.firebaseServices.db, 'orders', orderId),
                 { notes: updatedNotes }
             );
-            
+
             // 清空備註欄位
             document.getElementById('order-notes').value = '';
-            
+
             // 顯示成功彈窗
             showNotesSuccessModal();
-            
+
             // 重新載入訂單詳情以顯示新備註
             setTimeout(() => {
                 showOrderDetail(orderId);
             }, 500);
-            
+
         } else {
             throw new Error('找不到訂單文檔');
         }
@@ -1532,9 +1545,9 @@ function showNotesSuccessModal() {
             <button onclick="closeNotesSuccessModal()" class="btn btn-primary">確定</button>
         </div>
     `;
-    
+
     document.body.appendChild(modal);
-    
+
     // 添加樣式
     if (!document.querySelector('#notes-success-styles')) {
         const styles = document.createElement('style');
@@ -1552,7 +1565,7 @@ function showNotesSuccessModal() {
                 justify-content: center;
                 animation: fadeIn 0.3s ease-in-out;
             }
-            
+
             .notes-success-overlay {
                 position: absolute;
                 top: 0;
@@ -1562,7 +1575,7 @@ function showNotesSuccessModal() {
                 background: rgba(0, 0, 0, 0.5);
                 cursor: pointer;
             }
-            
+
             .notes-success-content {
                 background: white;
                 padding: 2rem;
@@ -1575,51 +1588,51 @@ function showNotesSuccessModal() {
                 box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
                 animation: slideIn 0.3s ease-out;
             }
-            
+
             .notes-success-icon {
                 font-size: 3.5rem;
                 color: #4caf50;
                 margin-bottom: 1rem;
                 animation: checkBounce 0.6s ease-in-out;
             }
-            
+
             .notes-success-content h3 {
                 color: #2c3e50;
                 margin: 0 0 1rem 0;
                 font-size: 1.4rem;
             }
-            
+
             .notes-success-content p {
                 color: #666;
                 margin: 0 0 1.5rem 0;
                 line-height: 1.5;
             }
-            
+
             .notes-success-content .btn {
                 min-width: 100px;
             }
-            
+
             @keyframes fadeIn {
                 from { opacity: 0; }
                 to { opacity: 1; }
             }
-            
+
             @keyframes fadeOut {
                 from { opacity: 1; }
                 to { opacity: 0; }
             }
-            
+
             @keyframes slideIn {
-                from { 
+                from {
                     transform: translateY(-50px) scale(0.9);
                     opacity: 0;
                 }
-                to { 
+                to {
                     transform: translateY(0) scale(1);
                     opacity: 1;
                 }
             }
-            
+
             @keyframes checkBounce {
                 0% { transform: scale(0); }
                 50% { transform: scale(1.2); }
@@ -1628,10 +1641,10 @@ function showNotesSuccessModal() {
         `;
         document.head.appendChild(styles);
     }
-    
+
     // 點擊背景關閉
     modal.querySelector('.notes-success-overlay').addEventListener('click', closeNotesSuccessModal);
-    
+
     // 2.5秒後自動關閉
     setTimeout(() => {
         closeNotesSuccessModal();
@@ -1655,7 +1668,7 @@ window.closeNotesSuccessModal = closeNotesSuccessModal;
 function getOrderStatusInfo(status) {
    let statusText = '';
    let statusClass = '';
-   
+
    switch(status) {
        case 'pending':
            statusText = '待處理';
@@ -1681,18 +1694,13 @@ function getOrderStatusInfo(status) {
            statusText = '待處理';
            statusClass = 'status-pending';
    }
-   
+
    return { statusText, statusClass };
 }
 
-// Toast 通知函數
-function showToast(message) {
-    if (typeof window.showToast === 'function') {
-        window.showToast(message);
-    } else {
-        alert(message);
-    }
-}
+// showToast 由 js/common.js 提供。這裡以前另外宣告了一個全域的 showToast，
+// 它會覆蓋掉 common.js 的版本，裡面又呼叫 window.showToast（也就是自己），
+// 一跳提示就無限遞迴、丟出 Maximum call stack size exceeded
     </script>
 </body>
 </html>
